@@ -38,6 +38,18 @@ let pickedFee = null;   // 고른 자격증 응시료
     return;
   }
 
+  // 지금 접수할 수 없는 자격증이면 신청서를 열지 않습니다.
+  // "올해는 접수할 수 없다고 안내해야 합니다" (02_안내규정.md 81줄)
+  if (cert.open === false) {
+    form.hidden = true;
+    if (noCert) {
+      noCert.hidden = false;
+      noCert.querySelector("h2").textContent = cert.name + " 는 지금 접수하실 수 없습니다";
+      noCert.querySelector("p").textContent = cert.closed;
+    }
+    return;
+  }
+
   picked = cert.name;
   pickedFee = cert.fee;
 

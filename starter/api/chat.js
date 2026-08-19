@@ -139,6 +139,7 @@ const PROMPT = (context, question) => `당신은 두두자격지원센터의 안
 - 60대 이상 어르신이 읽으십니다. 짧고 쉬운 말로, 존댓말로 답하십시오.
 - 물어보신 것에만 답하십시오. 묻지 않으신 것은 덧붙이지 마십시오.
 - 두 문장 안에 끝내십시오. 100자를 넘기지 마십시오.
+- 날짜나 목록이 여럿이면 줄을 바꿔 한 줄에 하나씩 적으십시오. 이때는 문장 수 제한을 넘겨도 됩니다.
 - 되물어보지 마십시오. [근거]에 있는 내용으로 바로 답하십시오.
 - [근거]로 답할 수 없으면 "모르겠습니다"라고만 답하십시오.
 
@@ -177,6 +178,8 @@ async function askGemini(question, context) {
 // 너무 길면 문장 끝에서 자릅니다. 중간에 끊긴 문장을 보여드리지 않기 위해서입니다.
 function trim(text, limit = 160) {
   text = text.trim();
+  // 줄바꿈이 있는 답(일정 목록 등)은 자르지 않습니다.
+  if (text.includes("\n")) return text;
   if (text.length <= limit) return text;
   const cut = text.slice(0, limit);
   const end = Math.max(cut.lastIndexOf("다."), cut.lastIndexOf("요."), cut.lastIndexOf("."));

@@ -72,10 +72,23 @@
   document.getElementById("cert-grid").innerHTML = CERTIFICATES.map(function (c) {
     const fee = c.fee
       ? '<span class="fe">' + c.fee + '</span>'
-      : '<span class="fe na">확인 필요</span>';
+      : '<span class="fe na">응시료 확인 필요</span>';
+
+    // 지금 접수할 수 없는 자격증은 흐리게 두고 이유를 적습니다.
+    // 아예 숨기면 "그 자격증은 안 다루나?" 하고 전화하시게 됩니다.
+    if (!c.open) {
+      return '<div class="cert-link closed">' +
+        '<span class="ico" aria-hidden="true">' + c.icon + '</span>' +
+        '<span class="nm">' + c.name + (c.alias ? '<em>' + c.alias + '</em>' : '') + '</span>' +
+        '<span class="why">' + c.why + '</span>' +
+        '<span class="closed-tag">' + c.closed + '</span>' +
+        '</div>';
+    }
+
     return '<a class="cert-link" href="apply.html?cert=' + encodeURIComponent(c.name) + '">' +
       '<span class="ico" aria-hidden="true">' + c.icon + '</span>' +
       '<span class="nm">' + c.name + (c.alias ? '<em>' + c.alias + '</em>' : '') + '</span>' +
+      '<span class="why">' + c.why + '</span>' +
       fee +
       '</a>';
   }).join("");

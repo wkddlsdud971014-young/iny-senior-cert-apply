@@ -69,6 +69,7 @@
     <select id="f-cert"><option value="">자격증 전체</option></select>
     <button id="btn-find">찾기</button>
     <button class="ghost" id="btn-reset">지우기</button>
+    <label class="chk"><input type="checkbox" id="show-all"> 모든 칸 보기</label>
     <label class="chk"><input type="checkbox" id="show-orig"> 원본 값도 보기</label>
   </div>
   <p id="list-info"></p>
@@ -194,17 +195,24 @@ function drawList() {
   $("page-info").textContent = `${page} / ${pages} 쪽`;
   $("prev").disabled = page <= 1; $("next").disabled = page >= pages;
 
-  const cols = showOrig
-    ? [["출처","출처"],["접수번호","접수번호"],["성명","성명"],
-       ["생년월일","생년월일","생년월일_원본"],["성별","성별","성별_원본"],
-       ["연락처","연락처","연락처_원본"],["자격증","자격증"],
-       ["시험지역","시험지역"],["시험일자","시험일자","시험일자_원본"],
-       ["결제수단","결제수단","결제수단_원본"],["결제상태","결제상태","결제상태_원본"],
-       ["접수상태","접수상태","접수상태_원본"],["접수일시","접수일시","접수일시_원본"]]
-    : [["출처","출처"],["접수번호","접수번호"],["성명","성명"],["생년월일","생년월일"],
-       ["성별","성별"],["연락처","연락처"],["자격증","자격증"],["시험지역","시험지역"],
-       ["시험일자","시험일자"],["결제수단","결제수단"],["결제상태","결제상태"],
-       ["접수상태","접수상태"],["접수일시","접수일시"]];
+  // 기본은 꼭 필요한 칸만 보여 드립니다. 옆으로 밀지 않아도 다 보이도록.
+  // 「모든 칸 보기」를 켜면 나머지도 나옵니다.
+  const showAll = $("show-all").checked;
+
+  let cols = [["출처","출처"],["접수번호","접수번호"],["성명","성명"],
+              ["자격증","자격증"],["시험일자","시험일자","시험일자_원본"],
+              ["접수상태","접수상태","접수상태_원본"]];
+
+  if (showAll) {
+    cols = [["출처","출처"],["접수번호","접수번호"],["성명","성명"],
+            ["생년월일","생년월일","생년월일_원본"],["성별","성별","성별_원본"],
+            ["연락처","연락처","연락처_원본"],["자격증","자격증"],
+            ["시험지역","시험지역"],["시험장","시험장"],
+            ["시험일자","시험일자","시험일자_원본"],
+            ["결제수단","결제수단","결제수단_원본"],["결제상태","결제상태","결제상태_원본"],
+            ["접수상태","접수상태","접수상태_원본"],["접수일시","접수일시","접수일시_원본"]];
+  }
+  if (!showOrig) cols = cols.map(c => [c[0], c[1]]);
 
   let h = "<tr>" + cols.map(c=>`<th>${c[0]}</th>`).join("") + "</tr>";
   rows.forEach(r => {
@@ -224,6 +232,7 @@ $("f-src").addEventListener("change", applyFilter);
 $("f-cert").addEventListener("change", applyFilter);
 $("btn-reset").addEventListener("click", () => { $("q").value=""; $("f-src").value=""; $("f-cert").value=""; applyFilter(); });
 $("show-orig").addEventListener("change", drawList);
+$("show-all").addEventListener("change", drawList);
 $("prev").addEventListener("click", () => { if (page>1){ page--; drawList(); window.scrollTo(0,document.getElementById("list").offsetTop-80);} });
 $("next").addEventListener("click", () => { page++; drawList(); window.scrollTo(0,document.getElementById("list").offsetTop-80); });
 

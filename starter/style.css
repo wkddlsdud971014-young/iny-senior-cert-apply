@@ -328,7 +328,7 @@ input:focus, textarea:focus { border-color: var(--accent); background: #fff; }
   background: var(--card); border: 2px solid var(--line); border-radius: 18px;
   box-shadow: 0 3px 12px rgba(74, 53, 41, .07);
   padding: 18px 12px 16px; text-decoration: none; color: var(--ink);
-  min-height: 168px; justify-content: center;
+  min-height: 190px; justify-content: center;
   transition: border-color .12s, transform .12s, box-shadow .12s;
 }
 .cert-link:hover {
@@ -337,8 +337,20 @@ input:focus, textarea:focus { border-color: var(--accent); background: #fff; }
 }
 .cert-link .ico { font-size: 44px; line-height: 1.1; margin-bottom: 10px; }
 .cert-link .nm  { font-size: 19px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.35; }
+.cert-link .why { font-size: 15px; color: var(--ink-soft); margin-top: 4px; line-height: 1.4; }
 .cert-link .fe  {
   font-size: 18px; color: var(--brand); font-weight: 700; margin-top: 10px;
+}
+
+/* 지금 접수할 수 없는 자격증 */
+.cert-link.closed { cursor: default; background: var(--band); border-style: dashed; }
+.cert-link.closed:hover { transform: none; border-color: var(--line); box-shadow: 0 3px 12px rgba(74,53,41,.07); }
+.cert-link.closed .ico { filter: grayscale(1); opacity: .5; }
+.cert-link.closed .nm, .cert-link.closed .why { color: var(--ink-soft); }
+.cert-link .closed-tag {
+  display: inline-block; margin-top: 10px; font-size: 14px; font-weight: 700;
+  background: var(--card); color: var(--accent);
+  border: 1px solid #EBC9B2; border-radius: 999px; padding: 4px 12px; line-height: 1.4;
 }
 .cert-link .fe.na { color: var(--ink-soft); font-weight: 600; font-size: 17px; }
 .cert-link .fe.na { color: var(--accent); font-weight: 600; }
