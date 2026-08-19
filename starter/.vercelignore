@@ -1,0 +1,10 @@
+# 로컬에서만 쓰는 접속 정보 파일. 배포에는 올리지 않습니다.
+# Vercel 에서는 api/config.js 가 환경변수를 읽어 /config.js 자리를 대신합니다.
+#
+# 맨 앞의 / 는 "루트에 있는 것만"이라는 뜻입니다.
+# 이걸 빼면 api/config.js 까지 같이 빠져 함수가 사라집니다.
+/config.js
+
+# 참고용 SQL 은 배포할 필요가 없습니다.
+/supabase.sql
+/supabase_integrated.sql
