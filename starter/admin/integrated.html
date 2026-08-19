@@ -154,7 +154,11 @@ async function load() {
   const b = await db.from("applications").select("*").order("id");
   if (a.error) { $("msg").textContent = "불러오지 못했습니다. (" + a.error.message + ")"; return; }
   const ours = (b.data || []).map(fromOurs);
-  const data = ours.concat(a.data || []);   // 우리 접수를 맨 앞에
+  // 최신 접수가 맨 위로 오게 접수일시 내림차순으로 놓습니다.
+  // 직원이 "방금 들어온 건"을 먼저 봐야 하기 때문입니다.
+  const data = ours.concat(a.data || []).sort(function (x, y) {
+    return String(y["접수일시"] || "").localeCompare(String(x["접수일시"] || ""));
+  });
   ALL = data; VIEW = data;
   $("msg").textContent = "";
   drawCounts(); drawCross(); drawSmall(); fillFilters(); drawList();
@@ -166,11 +170,25 @@ function count(rows, col) {
   return m;
 }
 
+// 한국 날짜로 오늘인지 봅니다.
+// Supabase 는 세계표준시로 저장해서, 그대로 세면 새벽 9시 이전 건이 어제로 잡힙니다.
+const KST = "Asia/Seoul";
+function kstDay(v) {
+  if (!v) return "";
+  const t = String(v);
+  const d = new Date(t.length <= 10 ? t + "T00:00:00+09:00" : t);
+  return isNaN(d) ? t.slice(0, 10) : d.toLocaleDateString("sv-SE", { timeZone: KST });
+}
+const todayKST = () => new Date().toLocaleDateString("sv-SE", { timeZone: KST });
+
 function drawCounts() {
   const by = count(ALL, "출처");
+  const today = todayKST();
+  const todayN = ALL.filter(r => kstDay(r["접수일시"]) === today).length;
   const won = ALL.reduce((s,r) => s + (parseInt(r["최종결제금액"],10) || 0), 0);
   const need = ALL.filter(r => r._ours && EDITABLE.some(c => !String(r[c[0]] || "").trim())).length;
   $("counts").innerHTML =
+    box("오늘 접수", todayN.toLocaleString() + "건") +
     box("전체 접수", ALL.length.toLocaleString() + "건") +
     ["우리접수","국가기술","전문","두두보건"].map(k => box(k, (by[k]||0).toLocaleString() + "건")).join("") +
     box("확인 필요", need + "건", need > 0);
@@ -211,14 +229,21 @@ function fillFilters() {
   add("f-cert", [...new Set(ALL.map(r=>r["자격증"]))].sort());
 }
 
+const COLF = {};   // 칸마다 거르는 말
+
 function applyFilter() {
   const q = $("q").value.trim();
   const s = $("f-src").value, c = $("f-cert").value;
-  VIEW = ALL.filter(r =>
-    (!s || r["출처"] === s) &&
-    (!c || r["자격증"] === c) &&
-    (!q || (r["성명"]||"").includes(q) || (r["접수번호"]||"").includes(q))
-  );
+  VIEW = ALL.filter(function (r) {
+    if (s && r["출처"] !== s) return false;
+    if (c && r["자격증"] !== c) return false;
+    if (q && !(r["성명"]||"").includes(q) && !(r["접수번호"]||"").includes(q)) return false;
+    for (const col in COLF) {
+      const want = COLF[col].trim();
+      if (want && !String(r[col] || "").includes(want)) return false;
+    }
+    return true;
+  });
   page = 1; drawList();
 }
 
@@ -244,7 +269,11 @@ function drawList() {
   if ($("show-when").checked) cols.push(["접수일시","접수일시","접수일시_원본"]);
   if (!showOrig) cols = cols.map(c => [c[0], c[1]]);
 
-  let h = "<tr>" + cols.map(c=>`<th>${c[0]}</th>`).join("") + "</tr>";
+  // 칸마다 거르는 줄. 직원이 "울산만" "취소만" 처럼 바로 좁혀 볼 수 있게.
+  let h = "<tr>" + cols.map(c=>`<th>${c[0]}</th>`).join("") + "</tr>" +
+    "<tr class='filter-row'>" + cols.map(function (c) {
+      return `<th><input type="text" class="col-f" data-col="${c[1]}" value="${esc(COLF[c[1]] || "")}" placeholder="거르기"></th>`;
+    }).join("") + "</tr>";
   rows.forEach(r => {
     h += "<tr>" + cols.map(c => {
       // 우리 접수 건의 빈 칸에는 「확인 필요」를 띄웁니다. 누르면 채울 수 있습니다.
@@ -269,7 +298,25 @@ $("btn-find").addEventListener("click", applyFilter);
 $("q").addEventListener("keydown", e => { if (e.key === "Enter") applyFilter(); });
 $("f-src").addEventListener("change", applyFilter);
 $("f-cert").addEventListener("change", applyFilter);
-$("btn-reset").addEventListener("click", () => { $("q").value=""; $("f-src").value=""; $("f-cert").value=""; applyFilter(); });
+$("btn-reset").addEventListener("click", () => {
+  $("q").value=""; $("f-src").value=""; $("f-cert").value="";
+  for (const k in COLF) delete COLF[k];
+  applyFilter();
+});
+
+// 칸마다 거르기 — 글자를 치면 바로 좁혀집니다.
+let colTimer = null;
+$("list").addEventListener("input", function (e) {
+  if (!e.target.classList.contains("col-f")) return;
+  COLF[e.target.dataset.col] = e.target.value;
+  const at = e.target.dataset.col, pos = e.target.selectionStart;
+  clearTimeout(colTimer);
+  colTimer = setTimeout(function () {
+    applyFilter();
+    const again = document.querySelector('.col-f[data-col="' + at + '"]');
+    if (again) { again.focus(); again.setSelectionRange(pos, pos); }
+  }, 250);
+});
 $("show-orig").addEventListener("change", drawList);
 $("show-when").addEventListener("change", drawList);
 $("prev").addEventListener("click", () => { if (page>1){ page--; drawList(); window.scrollTo(0,document.getElementById("list").offsetTop-80);} });

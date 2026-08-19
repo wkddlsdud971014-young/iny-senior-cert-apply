@@ -159,3 +159,14 @@ label.chk input { width: 22px; height: 22px; accent-color: var(--accent); }
   font-family: inherit; font-size: 12.5px; padding: 3px 6px; min-height: 0;
   border: 2px solid var(--accent); border-radius: 8px; background: #fff; width: auto; max-width: 150px;
 }
+
+
+/* ---------- 칸마다 거르는 줄 ---------- */
+.filter-row th { background: var(--bg); padding: 4px 5px; }
+.col-f {
+  width: 100%; min-width: 60px; font-family: inherit; font-size: 12px;
+  padding: 4px 6px; min-height: 0; border: 1px solid var(--line);
+  border-radius: 6px; background: var(--card); font-weight: 400;
+}
+.col-f:focus { border-color: var(--accent); outline: none; }
+.col-f::placeholder { color: var(--gray); font-size: 11px; }

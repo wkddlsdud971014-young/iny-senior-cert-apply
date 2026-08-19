@@ -53,6 +53,10 @@ function makeChat(root, opts = {}) {
       (source ? '<span class="src">' + esc(source) + "</span>" : "") + "</div>";
     log.appendChild(d);
     log.scrollTop = log.scrollHeight;
+    // 대화창이 화면 밖이면 그 자리로 옮겨 줍니다.
+    if (who === "bot") {
+      requestAnimationFrame(function () { log.scrollTop = log.scrollHeight; });
+    }
     return d;
   }
 
@@ -84,7 +88,14 @@ function makeChat(root, opts = {}) {
       say("bot", "지금은 답해 드리기 어렵습니다. 잠시 뒤에 다시 물어봐 주십시오.");
     }
     btn.disabled = false;
-    box.focus();
+
+    // 휴대폰에서는 입력칸에 커서를 두지 않습니다.
+    // 커서를 두면 자판이 올라오면서 화면이 입력칸으로 내려가
+    // 정작 답이 안 보입니다.
+    const small = window.matchMedia("(max-width: 720px), (pointer: coarse)").matches;
+    if (!small) box.focus();
+
+    log.scrollTop = log.scrollHeight;   // 답이 보이게 대화창을 아래로
   }
 
   form.addEventListener("submit", function (e) { e.preventDefault(); ask(box.value); });
