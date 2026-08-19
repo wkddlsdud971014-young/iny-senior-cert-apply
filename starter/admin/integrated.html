@@ -10,17 +10,6 @@
 
 <body>
 
-<div id="lock">
-  <h1>직원용 화면입니다</h1>
-  <p>비밀번호를 넣어 주십시오.</p>
-  <form id="lock-form">
-    <input id="pw" type="password" inputmode="numeric" autocomplete="off" maxlength="8">
-    <button type="submit">들어가기</button>
-  </form>
-  <p class="err" id="lock-err" hidden>비밀번호가 맞지 않습니다.</p>
-  <p><a href="../index.html">← 홈으로 돌아가기</a></p>
-</div>
-
 <nav class="nav">
   <div class="nav-inner">
     <a class="home" href="../index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M9.75 20v-5.5h4.5V20"/></svg> 홈</a>
@@ -34,6 +23,18 @@
     </ul>
   </div>
 </nav>
+
+
+<div id="lock">
+  <h1>직원용 화면입니다</h1>
+  <p>비밀번호를 넣어 주십시오.</p>
+  <form id="lock-form">
+    <input id="pw" type="password" inputmode="numeric" autocomplete="off" maxlength="8">
+    <button type="submit">들어가기</button>
+  </form>
+  <p class="err" id="lock-err" hidden>비밀번호가 맞지 않습니다.</p>
+  <p><a href="../index.html">← 홈으로 돌아가기</a></p>
+</div>
 
 <div class="wrap" id="main" hidden>
 
@@ -55,10 +56,10 @@
   <div class="scroll"><table id="cross"></table></div>
 
   <h2>결제상태 · 감면유형 · 사용맥락</h2>
-  <div class="scroll" style="display:flex;gap:20px;flex-wrap:wrap;">
-    <table id="t-pay" style="width:auto;"></table>
-    <table id="t-dis" style="width:auto;"></table>
-    <table id="t-use" style="width:auto;"></table>
+  <div class="mini-tables">
+    <div class="scroll"><table id="t-pay"></table></div>
+    <div class="scroll"><table id="t-dis"></table></div>
+    <div class="scroll"><table id="t-use"></table></div>
   </div>
 
   <h2>접수 목록</h2>

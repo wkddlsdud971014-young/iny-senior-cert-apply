@@ -108,3 +108,16 @@ label.chk input { width: 22px; height: 22px; accent-color: var(--accent); }
 #lock .err { background: var(--accent-pale); border-left: 8px solid var(--accent);
              border-radius: 12px; padding: 14px 18px; margin-top: 16px; font-weight: 700; }
 #lock a { font-size: 16px; color: var(--ink-soft); }
+
+
+/* ---------- 작은 표 세 개를 나란히 ---------- */
+.mini-tables {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px; align-items: start;
+}
+.mini-tables .scroll { margin: 0; }
+
+/* ---------- 비밀번호 칸 ---------- */
+/* 초점 색을 갈색으로. 주황은 "여기를 채우십시오" 표시에만 씁니다. */
+#lock input:focus { border-color: var(--brand); background: var(--card); }
+#lock input:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
