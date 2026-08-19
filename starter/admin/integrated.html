@@ -288,7 +288,18 @@ function drawList() {
       } else if (ed) {
         v = '<button type="button" class="filled" data-id="' + r._id + '" data-col="' + c[1] + '">' + esc(r[c[1]]) + '</button>';
       } else {
-        v = cell(r[c[1]]);
+        // 값이 길면 칸이 늘어나 표 전체가 밀립니다.
+        // 잘라서 보여 주고, 누르면 전부 보이게 합니다.
+        const raw = String(r[c[1]] == null ? "" : r[c[1]]);
+        if (raw.trim() === "") {
+          v = '<span class="blank">-</span>';
+        } else if (raw.length > 14) {
+          v = '<button type="button" class="long" title="눌러서 전부 보기">' +
+              esc(raw.slice(0, 14)) + '…</button>' +
+              '<span class="long-full" hidden>' + esc(raw) + '</span>';
+        } else {
+          v = esc(raw);
+        }
       }
       if (c[2] && (r[c[2]]||"").trim() !== "" && r[c[2]] !== r[c[1]])
         v += `<br><span class="orig">원본 ${esc(r[c[2]])}</span>`;
@@ -369,6 +380,18 @@ $("list").addEventListener("click", function (e) {
     const v = ev.target.closest(".fpop-v");
     if (v) { COLF[col] = v.dataset.v; closePop(); applyFilter(); }
   });
+});
+
+// 잘린 값을 누르면 전부 보여 줍니다. 다시 누르면 접힙니다.
+$("list").addEventListener("click", function (e) {
+  const b = e.target.closest(".long");
+  if (!b) return;
+  e.stopPropagation();
+  const full = b.nextElementSibling;
+  if (!full) return;
+  const open = !full.hidden;
+  full.hidden = open;
+  b.hidden = !open;
 });
 
 document.addEventListener("click", closePop);

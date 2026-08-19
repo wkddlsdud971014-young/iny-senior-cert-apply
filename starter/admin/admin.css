@@ -201,3 +201,19 @@ label.chk input { width: 22px; height: 22px; accent-color: var(--accent); }
 .fpop-v b { font-size: 11px; color: var(--ink-soft); font-weight: 700; }
 .fpop-v.on b { color: #fff; }
 .fpop-v[hidden] { display: none; }
+
+
+/* ---------- 값이 길 때 ---------- */
+/* 한 칸이 길어지면 표 전체가 밀려서, 잘라 두고 눌러서 봅니다. */
+#list td { max-width: 190px; }
+.long {
+  font-family: inherit; font-size: 12.5px; text-align: left;
+  background: transparent; border: none; border-bottom: 1px dotted var(--gray);
+  color: var(--ink); padding: 0; min-height: 0; cursor: pointer; line-height: 1.5;
+}
+.long:hover { color: var(--accent); border-bottom-color: var(--accent); }
+.long-full {
+  display: inline-block; white-space: normal; word-break: break-all;
+  background: var(--accent-pale); border-radius: 6px; padding: 3px 7px; line-height: 1.5;
+}
+.long-full[hidden] { display: none; }
