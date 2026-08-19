@@ -158,7 +158,10 @@ form.addEventListener("submit", async function (event) {
     note:            noteBox.value,
     certificate:     picked,   // 원본
     certificate_std: picked,   // 판정 (홈에서 고른 값이라 표준명과 같음)
-    channel:         "온라인"
+    channel:         "온라인",
+    // 발주서 3절의 접수 4단계 가운데 2단계입니다.
+    //   1 문의 → 2 접수 → 3 확인(담당자) → 4 완료(두두넷 원서접수)
+    staff_app_status: "접수"
   };
 
   const { data, error } = await db

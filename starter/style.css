@@ -84,6 +84,22 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .nav a:hover { background: var(--brand-2); color: #fff; }
 .nav a.on { color: var(--brand); background: var(--bg); font-weight: 800; }
 
+/* 로고 — 누르면 홈으로 */
+.nav .brand {
+  display: inline-flex; align-items: center; gap: 10px;
+  text-decoration: none; padding: 0 18px 0 0; margin-right: 6px;
+  border-right: 1px solid rgba(255,255,255,.18);
+}
+.logo-mark {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 17px; font-weight: 800; letter-spacing: -0.05em; flex: 0 0 38px;
+}
+.logo-name { font-size: 19px; font-weight: 800; color: #fff; letter-spacing: -0.03em; white-space: nowrap; }
+
+@media (max-width: 720px) { .logo-name { display: none; } .nav .brand { padding-right: 12px; } }
+
 /* 홈 아이콘 */
 .nav .home { font-weight: 800; color: #fff; padding-left: 12px; }
 .nav .home svg { width: 24px; height: 24px; }

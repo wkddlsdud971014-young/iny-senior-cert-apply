@@ -135,3 +135,27 @@ label.chk input { width: 22px; height: 22px; accent-color: var(--accent); }
 #list table td { font-size: 12.5px; padding: 5px 6px; }
 #list table td .orig { font-size: 11px; }
 #list .muted, #list .blank { font-size: 11px; }
+
+
+/* ---------- 담당자가 채우는 칸 ---------- */
+
+.need, .filled {
+  font-family: inherit; font-size: 12.5px; cursor: pointer;
+  border-radius: 999px; padding: 3px 10px; min-height: 0; line-height: 1.5;
+}
+/* 아직 안 채운 칸 — 누르면 채웁니다 */
+.need {
+  background: var(--accent-pale); color: var(--accent);
+  border: 1px solid #EBC9B2; font-weight: 700;
+}
+.need:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+/* 담당자가 채운 칸 — 누르면 고칩니다 */
+.filled {
+  background: transparent; color: var(--ink); border: 1px dashed var(--line); font-weight: 600;
+}
+.filled:hover { border-color: var(--accent); border-style: solid; }
+
+.cell-edit {
+  font-family: inherit; font-size: 12.5px; padding: 3px 6px; min-height: 0;
+  border: 2px solid var(--accent); border-radius: 8px; background: #fff; width: auto; max-width: 150px;
+}

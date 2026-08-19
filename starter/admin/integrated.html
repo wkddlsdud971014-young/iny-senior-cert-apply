@@ -12,6 +12,7 @@
 
 <nav class="nav">
   <div class="nav-inner">
+    <a class="brand" href="../index.html"><span class="logo-mark" aria-hidden="true">두두</span><span class="logo-name">두두자격지원센터</span></a>
     <a class="home" href="../index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M9.75 20v-5.5h4.5V20"/></svg> 홈</a>
     <ul class="menu">
       <li><a href="../apply.html">접수 신청</a></li>
@@ -19,7 +20,7 @@
     </ul>
     <ul class="util">
       <li><a href="../check.html">접수 확인</a></li>
-      <li><a href="index.html" class="on">직원용</a></li>
+      <li><a href="integrated.html" class="on">직원용</a></li>
     </ul>
   </div>
 </nav>
@@ -38,12 +39,11 @@
 
 <div class="wrap" id="main" hidden>
 
-  <h1>통합 접수 내역</h1>
-  <p class="sub">두두넷 국가기술 · 두두넷 전문 · 두두보건 세 곳의 접수를 한 표로 합친 것입니다</p>
+  <h1>접수 내역</h1>
+  <p class="sub">두두넷 국가기술 · 두두넷 전문 · 두두보건 · 우리 접수를 한 표로 모은 것입니다</p>
 
   <div class="subtabs">
-    <a href="index.html">우리 접수</a>
-    <a href="integrated.html" class="on">통합 내역</a>
+    <a href="integrated.html" class="on">접수 내역</a>
     <a href="faq.html">문서 고치기</a>
   </div>
 
@@ -112,13 +112,39 @@ const $ = id => document.getElementById(id);
 const esc = v => String(v == null ? "" : v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 const cell = v => (v == null || String(v).trim() === "") ? '<span class="blank">-</span>' : esc(v);
 
+// 우리 접수를 통합표와 같은 모양으로 바꿉니다.
+// 표를 합치지 않고 화면에서만 나란히 놓습니다.
+// integrated_applications 는 원본이라 손대지 않기 위해서입니다.
+function fromOurs(r) {
+  return {
+    _ours: true, _id: r.id,
+    "출처": "우리접수",
+    "접수번호": String(r.id),
+    "성명": r.name,
+    "생년월일": r.staff_birth,
+    "성별": r.staff_gender,
+    "연락처": r.phone,
+    "자격증": r.certificate_std || r.certificate,
+    "시험지역": r.staff_region,
+    "시험장": r.staff_center,
+    "시험일자": r.staff_exam_date,
+    "결제수단": r.staff_pay_method,
+    "결제상태": r.staff_pay_status,
+    "접수상태": r.staff_app_status,
+    "접수일시": r.created_at,
+    "최종결제금액": "",
+    "감면유형": "",
+    "사용맥락": "",
+  };
+}
+
 async function load() {
-  const { data, error } = await db
-    .from("integrated_applications")
-    .select("*")
-    .order("id", { ascending: true })
-    .limit(2000);
-  if (error) { $("msg").textContent = "불러오지 못했습니다. (" + error.message + ")"; return; }
+  $("msg").textContent = "불러오는 중입니다...";
+  const a = await db.from("integrated_applications").select("*").order("id").limit(2000);
+  const b = await db.from("applications").select("*").order("id");
+  if (a.error) { $("msg").textContent = "불러오지 못했습니다. (" + a.error.message + ")"; return; }
+  const ours = (b.data || []).map(fromOurs);
+  const data = ours.concat(a.data || []);   // 우리 접수를 맨 앞에
   ALL = data; VIEW = data;
   $("msg").textContent = "";
   drawCounts(); drawCross(); drawSmall(); fillFilters(); drawList();
@@ -133,15 +159,16 @@ function count(rows, col) {
 function drawCounts() {
   const by = count(ALL, "출처");
   const won = ALL.reduce((s,r) => s + (parseInt(r["최종결제금액"],10) || 0), 0);
+  const need = ALL.filter(r => r._ours && EDITABLE.some(c => !String(r[c[0]] || "").trim())).length;
   $("counts").innerHTML =
     box("전체 접수", ALL.length.toLocaleString() + "건") +
-    ["국가기술","전문","두두보건"].map(k => box(k, (by[k]||0).toLocaleString() + "건")).join("") +
-    box("결제 금액 합계", won.toLocaleString() + "원");
+    ["우리접수","국가기술","전문","두두보건"].map(k => box(k, (by[k]||0).toLocaleString() + "건")).join("") +
+    box("확인 필요", need + "건", need > 0);
 }
-const box = (label, num) => `<div class="box"><span class="label">${label}</span><span class="num">${num}</span></div>`;
+const box = (label, num, warn) => `<div class="box${warn ? " warn" : ""}"><span class="label">${label}</span><span class="num">${num}</span></div>`;
 
 function drawCross() {
-  const srcs = ["국가기술","전문","두두보건"];
+  const srcs = ["우리접수","국가기술","전문","두두보건"];
   const certs = [...new Set(ALL.map(r => r["자격증"]))].sort();
   let h = "<tr><th>자격증</th>" + srcs.map(s=>`<th class="num">${s}</th>`).join("") + '<th class="num">합계</th></tr>';
   certs.forEach(c => {
@@ -170,7 +197,7 @@ function fillFilters() {
   const add = (sel, vals) => vals.forEach(v => {
     const o = document.createElement("option"); o.value = v; o.textContent = v; $(sel).appendChild(o);
   });
-  add("f-src", ["국가기술","전문","두두보건"]);
+  add("f-src", ["우리접수","국가기술","전문","두두보건"]);
   add("f-cert", [...new Set(ALL.map(r=>r["자격증"]))].sort());
 }
 
@@ -210,7 +237,16 @@ function drawList() {
   let h = "<tr>" + cols.map(c=>`<th>${c[0]}</th>`).join("") + "</tr>";
   rows.forEach(r => {
     h += "<tr>" + cols.map(c => {
-      let v = cell(r[c[1]]);
+      // 우리 접수 건의 빈 칸에는 「확인 필요」를 띄웁니다. 누르면 채울 수 있습니다.
+      const ed = r._ours ? EDITABLE.find(x => x[0] === c[1]) : null;
+      let v;
+      if (ed && !String(r[c[1]] || "").trim()) {
+        v = '<button type="button" class="need" data-id="' + r._id + '" data-col="' + c[1] + '">확인 필요</button>';
+      } else if (ed) {
+        v = '<button type="button" class="filled" data-id="' + r._id + '" data-col="' + c[1] + '">' + esc(r[c[1]]) + '</button>';
+      } else {
+        v = cell(r[c[1]]);
+      }
       if (c[2] && (r[c[2]]||"").trim() !== "" && r[c[2]] !== r[c[1]])
         v += `<br><span class="orig">원본 ${esc(r[c[2]])}</span>`;
       return `<td>${v}</td>`;
@@ -228,6 +264,67 @@ $("show-orig").addEventListener("change", drawList);
 $("show-when").addEventListener("change", drawList);
 $("prev").addEventListener("click", () => { if (page>1){ page--; drawList(); window.scrollTo(0,document.getElementById("list").offsetTop-80);} });
 $("next").addEventListener("click", () => { page++; drawList(); window.scrollTo(0,document.getElementById("list").offsetTop-80); });
+
+// ---------- 담당자가 채우는 칸 ----------
+// 값 목록은 data/01_form_정책.md 에 적힌 것만 씁니다. 손으로 치면 오타가 납니다.
+const REGIONS = ["서울","부산","대구","인천","광주","대전","울산","세종","경기","강원","충북","충남","전북","전남","경북","경남","제주"];
+const EDITABLE = [
+  ["생년월일", "staff_birth",      "date"],
+  ["성별",     "staff_gender",     "select", ["남","여"]],
+  ["시험지역", "staff_region",     "select", REGIONS],
+  ["시험장",   "staff_center",     "text"],
+  ["시험일자", "staff_exam_date",  "date"],
+  ["결제수단", "staff_pay_method", "select", ["신용카드","계좌이체","가상계좌"]],
+  ["결제상태", "staff_pay_status", "select", ["완료","대기","환불"]],
+  // 우리 접수는 발주서 3절의 4단계를 씁니다.
+  // 통합 데이터의 '접수완료'는 두두넷 원서접수까지 마친 4단계라 뜻이 다릅니다.
+  ["접수상태", "staff_app_status", "select", ["접수","확인","완료","취소"]],
+];
+
+$("list").addEventListener("click", function (e) {
+  const btn = e.target.closest(".need, .filled");
+  if (!btn) return;
+  openEdit(Number(btn.dataset.id), btn.dataset.col, btn);
+});
+
+function openEdit(id, col, btn) {
+  const spec = EDITABLE.find(x => x[0] === col);
+  const row  = ALL.find(r => r._ours && r._id === id);
+  const now  = row[col] || "";
+
+  let input;
+  if (spec[2] === "select") {
+    input = document.createElement("select");
+    input.innerHTML = '<option value="">고르십시오</option>' +
+      spec[3].map(v => '<option' + (v === now ? " selected" : "") + '>' + v + '</option>').join("");
+  } else {
+    input = document.createElement("input");
+    input.type = spec[2] === "date" ? "date" : "text";
+    input.value = now;
+  }
+  input.className = "cell-edit";
+
+  btn.replaceWith(input);
+  input.focus();
+
+  let done = false;
+  async function save() {
+    if (done) return;
+    done = true;
+    const val = input.value.trim();
+    const patch = {}; patch[spec[1]] = val === "" ? null : val;
+    const { error } = await db.from("applications").update(patch).eq("id", id);
+    if (error) { alert("저장하지 못했습니다.\n" + error.message); }
+    else { row[col] = val; }
+    drawList(); drawCounts();
+  }
+  input.addEventListener("blur", save);
+  input.addEventListener("keydown", function (ev) {
+    if (ev.key === "Enter") { ev.preventDefault(); input.blur(); }
+    if (ev.key === "Escape") { done = true; drawList(); }
+  });
+  if (spec[2] === "select") input.addEventListener("change", save);
+}
 
 window.startPage = load;
 if (!main.hidden) load();
