@@ -198,6 +198,28 @@ function showDone(saved, row) {
   form.hidden = true;
   doneBox.hidden = false;
   doneBox.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  // 인쇄하기 — 화면 그대로 종이에. 메뉴와 버튼은 인쇄되지 않습니다.
+  document.getElementById("btn-print").addEventListener("click", function () {
+    window.print();
+  });
+
+  // 접수 내용 복사 — 문자로 보내시거나 메모에 붙여 두시라고.
+  document.getElementById("btn-copy").addEventListener("click", async function (e) {
+    const t =
+      "[두두자격지원센터 접수 완료]\n" +
+      "접수번호: " + saved.id + "\n" +
+      "신청 자격증: " + row.certificate + (pickedFee ? " (필기 응시료 " + pickedFee + ")" : "") + "\n" +
+      "이름: " + row.name + "\n" +
+      "접수한 때: " + document.getElementById("done-at").textContent;
+    try {
+      await navigator.clipboard.writeText(t);
+      e.target.textContent = "✅ 복사했습니다";
+    } catch (err) {
+      e.target.textContent = "복사가 안 됩니다. 화면을 사진으로 찍어 주십시오";
+    }
+    setTimeout(function () { e.target.textContent = "📋 접수 내용 복사"; }, 2500);
+  });
 }
 
 

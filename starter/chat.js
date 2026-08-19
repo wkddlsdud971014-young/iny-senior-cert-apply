@@ -9,6 +9,12 @@
 // 문서와 규칙은 파이썬 챗봇(chatbot/app.py)과 같은 것을 씁니다.
 // =============================================================
 
+// 파일을 직접 열면(file://) 우리 서버가 없어 답을 못 받습니다.
+// 그럴 때는 배포된 주소의 서버를 부릅니다. 내 컴퓨터에서 확인하실 때를 위한 것입니다.
+const CHAT_API = location.protocol === "file:"
+  ? "https://iny-senior-cert-apply.vercel.app/api/chat"
+  : "/api/chat";
+
 const CHAT_EXAMPLES = [
   "한식조리기능사 응시료가 얼마예요?",
   "접수비 얼마나 해요?",
@@ -65,7 +71,7 @@ function makeChat(root, opts = {}) {
     const waiting = say("bot", "찾아보고 있습니다...");
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await fetch(CHAT_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: text }),
