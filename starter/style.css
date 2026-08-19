@@ -290,7 +290,7 @@ input:focus, textarea:focus { border-color: var(--accent); background: #fff; }
    아이콘을 크게 넣은 이유: 글자를 읽기 전에 그림으로 먼저 알아보시게.
    ============================================================= */
 
-.cert-title { font-size: 19px; font-weight: 700; margin: 34px 0 12px; color: var(--ink-soft); }
+.cert-title { font-size: 20px; font-weight: 700; margin: 6px 0 16px; color: var(--ink); }
 
 .cert-grid {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
@@ -302,22 +302,19 @@ input:focus, textarea:focus { border-color: var(--accent); background: #fff; }
   background: var(--card); border: 2px solid var(--line); border-radius: 18px;
   box-shadow: 0 3px 12px rgba(74, 53, 41, .07);
   padding: 18px 12px 16px; text-decoration: none; color: var(--ink);
-  min-height: 200px; justify-content: flex-start;
+  min-height: 168px; justify-content: center;
   transition: border-color .12s, transform .12s, box-shadow .12s;
 }
 .cert-link:hover {
   border-color: var(--accent); transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(190, 84, 39, .18);
 }
-.cert-link .ico { font-size: 40px; line-height: 1.1; margin-bottom: 8px; }
+.cert-link .ico { font-size: 44px; line-height: 1.1; margin-bottom: 10px; }
 .cert-link .nm  { font-size: 19px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.35; }
-.cert-link .og  { font-size: 14px; color: var(--ink-soft); margin-top: 4px; line-height: 1.4; }
-.cert-link .md  { font-size: 14px; color: var(--ink-soft); }
-.cert-link .fe  { font-size: 16px; color: var(--brand); margin-top: 8px; font-weight: 600; }
-.cert-link .nt  {
-  font-size: 13px; color: var(--accent); font-weight: 600; margin-top: 8px;
-  border-top: 1px solid var(--line); padding-top: 8px; width: 100%; line-height: 1.4;
+.cert-link .fe  {
+  font-size: 18px; color: var(--brand); font-weight: 700; margin-top: 10px;
 }
+.cert-link .fe.na { color: var(--ink-soft); font-weight: 600; font-size: 17px; }
 .cert-link .fe.na { color: var(--accent); font-weight: 600; }
 
 @media (max-width: 900px) { .cert-grid { grid-template-columns: repeat(2, 1fr); } }
@@ -356,10 +353,18 @@ input:focus, textarea:focus { border-color: var(--accent); background: #fff; }
   display: block; font-size: 16px; color: var(--accent); font-weight: 600;
   margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line);
 }
+.summary { position: relative; padding-right: 150px; }
 .summary .change {
-  display: inline-block; margin-top: 14px; font-size: 16px;
-  color: var(--ink-soft); text-decoration: underline;
+  position: absolute; top: 18px; right: 20px;
+  font-size: 16px; color: var(--ink-soft); text-decoration: underline;
+  background: var(--card); border: 1px solid var(--line); border-radius: 999px;
+  padding: 8px 16px; white-space: nowrap;
 }
+.summary .change:hover { border-color: var(--accent); color: var(--accent); }
+
+/* '여기를 채워 주십시오' 표가 요약 상자와 겹치지 않게
+   이름 칸 위에 여유를 둡니다. */
+
 
 /* ---------- 동의 ---------- */
 label.agree {
@@ -439,7 +444,7 @@ label.agree.done { border-color: var(--accent); background: var(--accent-pale); 
    지금 채우실 곳 하나에만 테라코타 테두리와 "여기" 표를 붙입니다.
    ============================================================= */
 
-.field { border-radius: 16px; padding: 4px; margin: 0 -4px; position: relative; }
+.field { border-radius: 16px; padding: 4px; margin: 30px -4px 0; position: relative; }
 
 .next-up {
   outline: 4px solid var(--accent);
@@ -449,12 +454,12 @@ label.agree.done { border-color: var(--accent); background: var(--accent-pale); 
 }
 .next-up::before {
   content: "여기를 채워 주십시오";
-  position: absolute; top: -15px; left: 14px; z-index: 2;
+  position: absolute; top: -14px; right: 14px; left: auto; z-index: 3;
   background: var(--accent); color: #fff;
   font-size: 15px; font-weight: 700; border-radius: 999px; padding: 3px 14px;
   white-space: nowrap;
 }
-#send-btn.next-up::before { content: "누르시면 접수됩니다"; top: -13px; left: 20px; }
+#send-btn.next-up::before { content: "누르시면 접수됩니다"; top: -13px; right: 20px; left: auto; }
 #agree-box.next-up::before { content: "두 가지에 체크해 주십시오"; }
 #f-cert.next-up::before { content: "하나를 골라 주십시오"; }
 
@@ -487,15 +492,33 @@ label.agree.done { border-color: var(--accent); background: var(--accent-pale); 
 }
 .cert-zone.open::before {
   content: "하나를 골라 주십시오";
-  position: absolute; top: -15px; left: 20px; z-index: 2;
+  position: absolute; top: -14px; right: 20px; left: auto; z-index: 2;
   background: var(--accent); color: #fff;
   font-size: 15px; font-weight: 700; border-radius: 999px; padding: 3px 14px;
 }
 .cert-zone.open .cert-title { margin-top: 6px; }
 
+/* 자격증을 고르실 때는 위쪽을 흐리게 해서 여기에만 집중하시게 합니다.
+   바깥 여백을 누르시면 다시 원래대로 돌아옵니다. */
+body.focus-mode .hero,
+body.focus-mode .steps-title,
+body.focus-mode .steps,
+body.focus-mode .btn.start {
+  opacity: .2; pointer-events: none; transition: opacity .25s;
+}
+body.focus-mode .cert-zone.open { background: var(--card); }
+
+.cert-zone.open .exit-hint {
+  display: block; text-align: center; font-size: 16px;
+  color: var(--ink-soft); margin: 14px 0 0;
+}
+.exit-hint { display: none; }
+
 
 /* 어르신이 쓰시는 다른 이름 (포크레인 등) */
 .cert-link .nm em {
   display: block; font-style: normal; font-size: 15px;
-  font-weight: 600; color: var(--accent); margin-top: 2px;
+  font-weight: 500; color: var(--ink-soft); margin-top: 2px;
 }
+
+

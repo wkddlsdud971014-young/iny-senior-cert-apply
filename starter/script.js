@@ -47,7 +47,7 @@ let pickedFee = null;   // 고른 자격증 응시료
   sumBox.innerHTML =
     '<span class="lbl">고르신 자격증</span>' +
     '<span class="cert">' + certLabel(cert) + '</span>' +
-    '<span class="sub">' + cert.org + ' · ' + cert.method + '</span>' +
+    '<span class="sub">' + cert.org + '<br>' + cert.method + '</span>' +
     fee +
     (cert.note ? '<span class="note">' + cert.note + '</span>' : '') +
     '<a class="change" href="index.html?open=1">다른 자격증으로 바꾸기</a>';
@@ -78,18 +78,25 @@ function hyphenPhone(value) {
 // 지금 채우실 곳 하나에만 테두리를 밝힙니다.
 
 function updateNext() {
-  ["f-name", "f-phone", "agree-box", "send-btn"].forEach(function (id) {
+  ["f-name", "f-phone", "f-note", "agree-box", "send-btn"].forEach(function (id) {
     const el = document.getElementById(id);
     if (el) el.classList.remove("next-up");
   });
 
-  let id;
-  if (nameBox.value.trim() === "")                          id = "f-name";
+  // 지금 쓰고 계신 칸이 있으면 그 칸에 머뭅니다.
+  // 글자를 한 자 넣었다고 표시가 다음 칸으로 넘어가면 헷갈리십니다.
+  const now = document.activeElement;
+  let id = null;
+  if (now === nameBox)       id = "f-name";
+  else if (now === phoneBox) id = "f-phone";
+  else if (now === noteBox)  id = null;              // 선택사항이라 표시하지 않음
+  else if (now === agP || now === agT) id = "agree-box";
+  else if (nameBox.value.trim() === "")                     id = "f-name";
   else if (phoneBox.value.trim() === "")                    id = "f-phone";
   else if (!(agP && agP.checked) || !(agT && agT.checked))  id = "agree-box";
   else                                                      id = "send-btn";
 
-  const el = document.getElementById(id);
+  const el = id ? document.getElementById(id) : null;
   if (el) el.classList.add("next-up");
 
   [agP, agT].forEach(function (c) {
@@ -184,9 +191,57 @@ function showDone(saved, row) {
 
 // ----- 7. 연결 -----
 
+// 다음 칸으로 옮겨 드리기
+// 어르신이 "이제 뭘 해야 하나" 찾지 않으시도록 자동으로 넘어갑니다.
+function goTo(el) {
+  if (!el) return;
+  el.focus({ preventScroll: true });
+  const box = el.closest(".field") || el.closest(".agree-box") || el;
+  box.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+// 한글을 칠 때는 엔터가 "글자 완성" 역할도 합니다.
+// 조합 중에 누른 엔터는 다음 칸으로 넘어가는 신호가 아닙니다.
+//   e.isComposing        — 한글을 조합하는 중
+//   e.keyCode === 229    — 옛 브라우저에서 조합 중일 때 오는 값
+function isTypingHangul(e) {
+  return e.isComposing || e.keyCode === 229;
+}
+
+// 이름 칸에서 엔터 → 연락처로
+nameBox.addEventListener("keydown", function (e) {
+  if (e.key !== "Enter" || isTypingHangul(e)) return;
+  e.preventDefault();
+  if (nameBox.value.trim() !== "") goTo(phoneBox);
+});
+
+// 연락처 칸에서 엔터 → 동의로
+phoneBox.addEventListener("keydown", function (e) {
+  if (e.key !== "Enter" || isTypingHangul(e)) return;
+  e.preventDefault();
+  goTo(agP);
+});
+
 phoneBox.addEventListener("input", function () {
   phoneBox.value = hyphenPhone(phoneBox.value);
+
+  // 번호를 다 넣으시면(11자리) 저절로 동의 칸으로 넘어갑니다.
+  const digits = phoneBox.value.replace(/[^0-9]/g, "");
+  if (digits.length === 11) setTimeout(function () { goTo(agP); }, 250);
 });
-[nameBox, phoneBox].forEach(function (el) { el.addEventListener("input", updateNext); });
+
+// 첫 번째 동의에 체크하시면 두 번째로
+if (agP) agP.addEventListener("change", function () {
+  if (agP.checked && agT && !agT.checked) setTimeout(function () { goTo(agT); }, 150);
+});
+// 두 가지 다 체크하시면 보내기 버튼으로
+if (agT) agT.addEventListener("change", function () {
+  if (agT.checked && agP && agP.checked) setTimeout(function () { goTo(sendBtn); }, 150);
+});
+[nameBox, phoneBox, noteBox].forEach(function (el) {
+  el.addEventListener("input", updateNext);
+  el.addEventListener("focus", updateNext);
+  el.addEventListener("blur", function () { setTimeout(updateNext, 0); });
+});
 [agP, agT].forEach(function (c) { if (c) c.addEventListener("change", updateNext); });
 updateNext();

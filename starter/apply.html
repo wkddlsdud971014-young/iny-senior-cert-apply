@@ -45,16 +45,18 @@
     <div class="field" id="f-name">
       <label for="name">이름</label>
       <input id="name" type="text" autocomplete="name">
+      <p class="help">다 넣으시면 <b>엔터</b>를 누르십시오</p>
     </div>
 
     <div class="field" id="f-phone">
       <label for="phone">연락처</label>
       <input id="phone" type="tel" autocomplete="tel">
-      <p class="help">숫자만 넣으셔도 되고, - 를 넣으셔도 됩니다.</p>
     </div>
 
-    <label for="note">더 하실 말씀 <span class="optional">(안 쓰셔도 됩니다)</span></label>
-    <textarea id="note"></textarea>
+    <div class="field" id="f-note">
+      <label for="note">더 하실 말씀 <span class="optional">(선택사항)</span></label>
+      <textarea id="note"></textarea>
+    </div>
 
     <h2 id="agree"><span class="step-no">2</span>동의하실 내용</h2>
 
