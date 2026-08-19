@@ -69,7 +69,7 @@
     <select id="f-cert"><option value="">자격증 전체</option></select>
     <button id="btn-find">찾기</button>
     <button class="ghost" id="btn-reset">지우기</button>
-    <label class="chk"><input type="checkbox" id="show-all"> 모든 칸 보기</label>
+    <label class="chk"><input type="checkbox" id="show-when"> 접수일시 보기</label>
     <label class="chk"><input type="checkbox" id="show-orig"> 원본 값도 보기</label>
   </div>
   <p id="list-info"></p>
@@ -195,29 +195,22 @@ function drawList() {
   $("page-info").textContent = `${page} / ${pages} 쪽`;
   $("prev").disabled = page <= 1; $("next").disabled = page >= pages;
 
-  // 기본은 꼭 필요한 칸만 보여 드립니다. 옆으로 밀지 않아도 다 보이도록.
-  // 「모든 칸 보기」를 켜면 나머지도 나옵니다.
-  const showAll = $("show-all").checked;
-
+  // 칸을 숨기지 않고 다 보여 드립니다. 대신 글자를 작게 씁니다.
   let cols = [["출처","출처"],["접수번호","접수번호"],["성명","성명"],
-              ["자격증","자격증"],["시험일자","시험일자","시험일자_원본"],
+              ["생년월일","생년월일","생년월일_원본"],["성별","성별","성별_원본"],
+              ["연락처","연락처","연락처_원본"],["자격증","자격증"],
+              ["지역","시험지역"],["시험장","시험장"],
+              ["시험일자","시험일자","시험일자_원본"],
+              ["결제수단","결제수단","결제수단_원본"],["결제상태","결제상태","결제상태_원본"],
               ["접수상태","접수상태","접수상태_원본"]];
-
-  if (showAll) {
-    cols = [["출처","출처"],["접수번호","접수번호"],["성명","성명"],
-            ["생년월일","생년월일","생년월일_원본"],["성별","성별","성별_원본"],
-            ["연락처","연락처","연락처_원본"],["자격증","자격증"],
-            ["시험지역","시험지역"],["시험장","시험장"],
-            ["시험일자","시험일자","시험일자_원본"],
-            ["결제수단","결제수단","결제수단_원본"],["결제상태","결제상태","결제상태_원본"],
-            ["접수상태","접수상태","접수상태_원본"],["접수일시","접수일시","접수일시_원본"]];
-  }
+  // 접수일시는 칸을 많이 차지해서 체크하셨을 때만 보여 드립니다.
+  if ($("show-when").checked) cols.push(["접수일시","접수일시","접수일시_원본"]);
   if (!showOrig) cols = cols.map(c => [c[0], c[1]]);
 
   let h = "<tr>" + cols.map(c=>`<th>${c[0]}</th>`).join("") + "</tr>";
   rows.forEach(r => {
     h += "<tr>" + cols.map(c => {
-      let v = cell(r[c[1]]);
+      let v = cell(c[1] === "접수일시" ? String(r[c[1]] || "").slice(0, 10) : r[c[1]]);
       if (c[2] && (r[c[2]]||"").trim() !== "" && r[c[2]] !== r[c[1]])
         v += `<br><span class="orig">원본 ${esc(r[c[2]])}</span>`;
       return `<td>${v}</td>`;
@@ -232,7 +225,7 @@ $("f-src").addEventListener("change", applyFilter);
 $("f-cert").addEventListener("change", applyFilter);
 $("btn-reset").addEventListener("click", () => { $("q").value=""; $("f-src").value=""; $("f-cert").value=""; applyFilter(); });
 $("show-orig").addEventListener("change", drawList);
-$("show-all").addEventListener("change", drawList);
+$("show-when").addEventListener("change", drawList);
 $("prev").addEventListener("click", () => { if (page>1){ page--; drawList(); window.scrollTo(0,document.getElementById("list").offsetTop-80);} });
 $("next").addEventListener("click", () => { page++; drawList(); window.scrollTo(0,document.getElementById("list").offsetTop-80); });
 

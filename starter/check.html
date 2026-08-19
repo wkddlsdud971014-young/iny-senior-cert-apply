@@ -56,6 +56,10 @@
   <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="rm-head">
     <button type="button" class="modal-close" id="rm-close" aria-label="닫기">✕</button>
     <div id="result"></div>
+    <div class="btn-row done-btns" id="rm-actions" hidden>
+      <button type="button" class="btn" id="rm-print">🖨 인쇄하기</button>
+      <button type="button" class="btn ghost" id="rm-copy">📋 접수 내용 복사</button>
+    </div>
     <button type="button" class="btn wide" id="rm-ok">닫기</button>
   </div>
 </div>
@@ -143,11 +147,43 @@ updateNext();
 
 
 // ----- 결과 모달 -----
-function showResult() {
+let FOUND = [];   // 찾은 접수. 인쇄·복사에 씁니다.
+
+function showResult(hasRows) {
   modal.hidden = false;
   document.body.style.overflow = "hidden";
+  document.getElementById("rm-actions").hidden = !hasRows;
   document.getElementById("rm-ok").focus();
 }
+
+// 인쇄하기 — 찾은 내용만 종이에 나옵니다.
+document.getElementById("rm-print").addEventListener("click", function () {
+  window.print();
+});
+
+// 접수 내용 복사 — 자녀분께 문자로 보내실 수 있게.
+document.getElementById("rm-copy").addEventListener("click", async function (e) {
+  const t = FOUND.map(function (r) {
+    const c = certByName(r.certificate_std || r.certificate);
+    const fee = (c && c.fee) ? " (필기 응시료 " + c.fee + ")" : "";
+    const d = new Date(r.created_at);
+    const when = d.getFullYear() + "년 " + (d.getMonth()+1) + "월 " + d.getDate() + "일 " +
+                 String(d.getHours()).padStart(2,"0") + "시 " + String(d.getMinutes()).padStart(2,"0") + "분";
+    return "[두두자격지원센터 접수 확인]\n" +
+           "접수번호: " + r.id + "\n" +
+           "신청 자격증: " + (c ? c.name : r.certificate) + fee + "\n" +
+           "이름: " + r.name + "\n" +
+           "연락처: " + r.phone + "\n" +
+           "접수한 때: " + when;
+  }).join("\n\n");
+  try {
+    await navigator.clipboard.writeText(t);
+    e.target.textContent = "✅ 복사했습니다";
+  } catch (err) {
+    e.target.textContent = "복사가 안 됩니다. 화면을 사진으로 찍어 주십시오";
+  }
+  setTimeout(function () { e.target.textContent = "📋 접수 내용 복사"; }, 2500);
+});
 function closeResult() {
   modal.hidden = true;
   document.body.style.overflow = "";
@@ -195,7 +231,8 @@ document.getElementById("check-form").addEventListener("submit", async function 
       '<li>연락처를 <b>다른 번호</b>로 넣지 않으셨는지 보십시오.</li>' +
       '</ul>' +
       '<div class="btn-row"><a class="btn" href="index.html?open=1">새로 접수하러 가기</a></div>';
-    showResult();
+    FOUND = [];
+    showResult(false);
     return;
   }
 
@@ -220,7 +257,8 @@ document.getElementById("check-form").addEventListener("submit", async function 
         '</dl></div>';
     }).join("") +
     '<p class="help">담당자가 자격 요건을 확인한 뒤 연락드립니다.</p>';
-  showResult();
+  FOUND = rows;
+  showResult(true);
 });
 </script>
 <script src="chat.js"></script>

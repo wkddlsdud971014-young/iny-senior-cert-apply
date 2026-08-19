@@ -127,3 +127,11 @@ label.chk input { width: 22px; height: 22px; accent-color: var(--accent); }
    신청자용 화면(20px)과 달리, 직원은 표를 한눈에 훑어야 합니다. */
 .hint { font-size: 15px; padding: 12px 16px; }
 .mini-tables td, .mini-tables th { font-size: 14px; }
+
+
+/* 통합 내역은 칸이 14개라, 옆으로 밀지 않아도 보이도록 글자를 더 줄입니다.
+   직원이 표를 훑어보는 화면이라 신청자용(20px)과 기준이 다릅니다. */
+#list table th { font-size: 12px; padding: 6px 6px; }
+#list table td { font-size: 12.5px; padding: 5px 6px; }
+#list table td .orig { font-size: 11px; }
+#list .muted, #list .blank { font-size: 11px; }
