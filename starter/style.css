@@ -67,50 +67,57 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 
 /* ---------- 맨 위 메뉴바 ----------
-   한 줄로 낮게 유지합니다. 페이지를 옮겨도 높이가 같아야
-   화면이 튀지 않고 어디에 있는지 잃지 않습니다. */
+   두 줄입니다.
+     윗줄 — 로고(왼쪽) · 접수 확인 · 직원용(오른쪽)
+     아랫줄 — 홈 · 접수 신청 · 물어보기
+   화면마다 높이가 같아야 옮겨 다닐 때 화면이 튀지 않습니다. */
 
-.nav { background: var(--brand); margin-bottom: 26px; }
-.nav-inner {
-  max-width: 1000px; margin: 0 auto; padding: 0 20px;
-  display: flex; align-items: stretch; gap: 4px; min-height: 66px; flex-wrap: wrap;
-}
+.nav { background: var(--brand); }
+.nav-inner { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
 
-.nav a {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-size: 19px; font-weight: 600; color: #E8DCCF;
-  text-decoration: none; padding: 0 20px; min-height: 66px;
+/* 윗줄 */
+.nav-top {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 12px 0 10px; flex-wrap: wrap;
+  border-bottom: 1px solid rgba(255,255,255,.14);
 }
-.nav a:hover { background: var(--brand-2); color: #fff; }
-.nav a.on { color: var(--brand); background: var(--bg); font-weight: 800; }
-
-/* 로고 — 누르면 홈으로 */
-.nav .brand {
-  display: inline-flex; align-items: center; gap: 10px;
-  text-decoration: none; padding: 0 18px 0 0; margin-right: 6px;
-  border-right: 1px solid rgba(255,255,255,.18);
-}
+.nav .brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; }
 .logo-mark {
-  width: 38px; height: 38px; border-radius: 50%;
+  width: 40px; height: 40px; border-radius: 50%;
   background: var(--accent); color: #fff;
   display: inline-flex; align-items: center; justify-content: center;
-  font-size: 17px; font-weight: 800; letter-spacing: -0.05em; flex: 0 0 38px;
+  font-size: 18px; font-weight: 800; letter-spacing: -0.05em; flex: 0 0 40px;
 }
-.logo-name { font-size: 19px; font-weight: 800; color: #fff; letter-spacing: -0.03em; white-space: nowrap; }
+.logo-name { font-size: 21px; font-weight: 800; color: #fff; letter-spacing: -0.03em; }
 
-@media (max-width: 720px) { .logo-name { display: none; } .nav .brand { padding-right: 12px; } }
+.nav .util { display: flex; list-style: none; margin: 0; padding: 0; gap: 4px; }
+.nav .util a {
+  display: inline-flex; align-items: center; font-size: 16px; font-weight: 600;
+  color: #D3C1AF; text-decoration: none; padding: 8px 14px; border-radius: 999px;
+}
+.nav .util a:hover { background: var(--brand-2); color: #fff; }
+.nav .util a.on { background: var(--bg); color: var(--brand); font-weight: 800; }
 
-/* 홈 아이콘 */
-.nav .home { font-weight: 800; color: #fff; padding-left: 12px; }
-.nav .home svg { width: 24px; height: 24px; }
+/* 아랫줄 */
+.nav-bottom { display: flex; align-items: stretch; gap: 4px; flex-wrap: wrap; }
+.nav-bottom a {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 19px; font-weight: 600; color: #E8DCCF; text-decoration: none;
+  padding: 0 20px; min-height: 58px; border-radius: 14px 14px 0 0;
+}
+.nav-bottom a:hover { background: var(--brand-2); color: #fff; }
+.nav-bottom a.on { color: var(--brand); background: var(--bg); font-weight: 800; }
+.nav-bottom .home svg { width: 22px; height: 22px; }
+.nav .menu { display: flex; list-style: none; margin: 0; padding: 0; gap: 4px; }
 
-.nav ul { list-style: none; display: flex; margin: 0; padding: 0; }
-.nav .util { margin-left: auto; }
-.nav .util a { font-size: 17px; color: #D3C1AF; padding: 0 16px; }
-.nav .util .signup { color: #fff; font-weight: 700; }
-/* 직원용은 신청자가 실수로 누르지 않게 색만 흐리게 합니다.
-   글자 크기는 옆의 「접수 확인」과 같게 둡니다. */
-.nav .util .staff { color: #B5A192; }
+.nav + * { margin-top: 0; }
+.wrap { padding-top: 28px; }
+
+@media (max-width: 640px) {
+  .logo-name { font-size: 18px; }
+  .nav-bottom a { padding: 0 14px; font-size: 18px; min-height: 52px; }
+  .nav .util a { font-size: 15px; padding: 7px 12px; }
+}
 
 /* ---------- 카드 ---------- */
 
