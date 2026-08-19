@@ -171,7 +171,7 @@ form.addEventListener("submit", async function (event) {
 
 function showDone(saved, row) {
   document.getElementById("done-title").textContent =
-    "접수 완료되었습니다 · 접수번호 " + saved.id + "번";
+    "접수 완료되었습니다";
   document.getElementById("done-no").textContent   = saved.id;
   document.getElementById("done-cert").textContent =
     row.certificate + (pickedFee ? "  (필기 응시료 " + pickedFee + ")" : "  (응시료 확인 필요)");

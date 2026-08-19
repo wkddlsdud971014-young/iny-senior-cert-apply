@@ -91,10 +91,14 @@
 
   <section id="done" hidden>
     <h2 id="done-title">접수 완료되었습니다</h2>
-    <p>접수번호</p>
-    <span class="num" id="done-no"></span>
-    <p><b>담당자가 자격 요건을 확인한 뒤 연락드립니다.</b></p>
-    <p>이 번호를 적어 두시거나 화면을 사진으로 찍어 두십시오.</p>
+
+    <div class="done-top">
+      <span class="lbl">접수번호</span>
+      <span class="num" id="done-no"></span>
+      <p class="say">담당자가 자격 요건을 확인한 뒤 연락드립니다.<br>
+        <span class="help">이 번호를 적어 두시거나 화면을 사진으로 찍어 두십시오.</span></p>
+    </div>
+
     <dl>
       <dt>신청한 자격증</dt><dd id="done-cert"></dd>
       <dt>이름</dt><dd id="done-name"></dd>
@@ -102,16 +106,9 @@
     </dl>
 
     <div class="done-next">
-      <p class="dn-title">담당자 연락을 받으시기 전까지<br><b>증명사진을 준비해 주십시오</b></p>
-      <ul class="list">
-        <li><b>6개월 이내</b>에 찍은 사진</li>
-        <li><b>3.5 × 4.5cm</b> 컬러</li>
-        <li><b>상반신 정면</b>, 모자 없이, 배경 없음</li>
-      </ul>
-      <p class="dn-warn">
-        스냅사진 · 선글라스 · 스티커사진 · 측면사진 · 모자 착용은
-        규격에 맞지 않아 <b>접수가 거부됩니다.</b>
-      </p>
+      <p class="dn-title">연락받으시기 전까지 <b>증명사진</b>을 준비해 주십시오</p>
+      <p class="dn-spec">6개월 이내 촬영 · 3.5 × 4.5cm 컬러 · 상반신 정면 · 모자 없이 · 배경 없음</p>
+      <p class="dn-warn">스냅사진 · 선글라스 · 스티커사진 · 측면사진은 규격에 맞지 않아 <b>접수가 거부됩니다.</b></p>
     </div>
   </section>
 

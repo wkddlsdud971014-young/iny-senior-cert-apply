@@ -174,6 +174,13 @@ input, textarea {
 textarea { min-height: 104px; }
 input:focus, textarea:focus { border-color: var(--accent); background: #fff; }
 
+/* 「여기를 채워 주십시오」 상자 안에서는 바깥 테두리 하나만 보이게 합니다.
+   안팎이 둘 다 켜지면 테두리가 이중으로 보여 헷갈리십니다. */
+.field.next-up input,
+.field.next-up textarea,
+.field.next-up input:focus,
+.field.next-up textarea:focus { border-color: var(--line); background: var(--card); }
+
 .help { font-size: 17px; color: var(--ink-soft); margin: 8px 0 0; }
 
 
@@ -210,17 +217,30 @@ input:focus, textarea:focus { border-color: var(--accent); background: #fff; }
 
 #done {
   background: var(--card); border: 2px solid var(--accent); border-radius: 20px;
-  padding: 0 30px 30px; margin-top: 26px; overflow: hidden;
+  padding: 0 24px 22px; margin-top: 22px; overflow: hidden;
   box-shadow: 0 4px 18px rgba(190, 84, 39, .14);
 }
-#done h2 { background: var(--accent); color: #fff; margin: 0 -30px 26px; padding: 20px 30px; border: none; }
-#done .num {
-  font-size: 64px; font-weight: 800; display: block; margin: 8px 0 20px;
-  color: var(--accent); letter-spacing: 1px; line-height: 1.1;
+#done h2 {
+  background: var(--accent); color: #fff; margin: 0 -24px 20px;
+  padding: 15px 24px; border: none; font-size: 21px;
 }
-#done dl { margin: 24px 0 0; }
-#done dt { font-weight: 700; margin-top: 16px; color: var(--ink-soft); font-size: 17px; }
-#done dd { margin: 0; font-size: 21px; font-weight: 600; }
+
+/* 접수번호와 안내를 한 줄에 나란히 — 세로 길이를 줄입니다 */
+#done .done-top { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+#done .done-top .lbl { font-size: 15px; color: var(--ink-soft); }
+#done .num {
+  font-size: 46px; font-weight: 800; color: var(--accent);
+  line-height: 1; margin: 0;
+}
+#done .say { margin: 0; font-size: 17px; font-weight: 600; flex: 1 1 240px; line-height: 1.5; }
+#done .say .help { font-weight: 400; font-size: 15px; }
+
+#done dl {
+  margin: 18px 0 0; padding-top: 16px; border-top: 1px solid var(--line);
+  display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: baseline;
+}
+#done dt { font-weight: 600; margin: 0; color: var(--ink-soft); font-size: 15px; white-space: nowrap; }
+#done dd { margin: 0; font-size: 18px; font-weight: 600; }
 
 
 /* ---------- 목록 ---------- */
@@ -388,7 +408,7 @@ label.agree input { width: 28px; height: 28px; min-height: 0; flex: 0 0 28px; ma
 .prep p { margin: 0 0 6px; }
 
 
-/* ---------- (안내 모달은 완료 화면 안으로 옮겼습니다) ---------- */
+/* ---------- 모달 ---------- */
 .__unused
 .modal {
   position: fixed; inset: 0; z-index: 100;
@@ -414,12 +434,12 @@ label.agree input { width: 28px; height: 28px; min-height: 0; flex: 0 0 28px; ma
 
 /* ---------- 완료 화면 안의 다음 안내 ---------- */
 .done-next {
-  background: var(--accent-pale); border: 2px solid #EBC9B2; border-radius: 16px;
-  padding: 20px 24px; margin-top: 26px;
+  background: var(--accent-pale); border: 1px solid #EBC9B2; border-radius: 14px;
+  padding: 14px 18px; margin-top: 18px;
 }
-.done-next .dn-title { font-size: 21px; line-height: 1.5; margin: 0 0 12px; }
-.done-next .list li { font-size: 18px; border-bottom-color: #EBC9B2; }
-.done-next .dn-warn { font-size: 16px; color: var(--ink-soft); margin: 14px 0 0; }
+.done-next .dn-title { font-size: 17px; line-height: 1.5; margin: 0 0 6px; }
+.done-next .dn-spec  { font-size: 16px; font-weight: 600; margin: 0 0 6px; line-height: 1.5; }
+.done-next .dn-warn  { font-size: 14px; color: var(--ink-soft); margin: 0; line-height: 1.5; }
 
 
 /* ---------- 동의 상자 ---------- */
@@ -522,3 +542,49 @@ body.focus-mode .cert-zone.open { background: var(--card); }
 }
 
 
+
+
+/* ---------- 접수 확인 결과 ---------- */
+.found { border: 2px solid var(--line); border-radius: 16px; padding: 18px 22px; margin-bottom: 14px; }
+.found + .found { margin-top: 0; }
+.found-top { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+.found-top .lbl { font-size: 15px; color: var(--ink-soft); }
+.found-top .num { font-size: 34px; font-weight: 800; color: var(--accent); line-height: 1; }
+.found-top .state {
+  margin-left: auto; font-size: 15px; font-weight: 700;
+  background: var(--accent-pale); color: var(--accent);
+  border-radius: 999px; padding: 6px 16px;
+}
+.found dl {
+  margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: baseline;
+}
+.found dt { font-size: 15px; color: var(--ink-soft); font-weight: 600; white-space: nowrap; margin: 0; }
+.found dd { font-size: 18px; font-weight: 600; margin: 0; }
+
+
+/* 결과가 나타날 때 잠깐 테두리를 밝혀 눈에 띄게 */
+/* ---------- 결과 모달 ---------- */
+.modal {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(43, 33, 24, .6);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal[hidden] { display: none; }
+.modal-box {
+  position: relative; background: var(--card); border-radius: 22px;
+  max-width: 560px; width: 100%; padding: 28px;
+  box-shadow: 0 14px 44px rgba(43, 33, 24, .4);
+  max-height: 88vh; overflow-y: auto;
+}
+.modal-box h2 {
+  margin: 0 0 18px; font-size: 24px; padding-bottom: 14px;
+  border-bottom: 3px solid var(--accent); background: none; color: var(--ink);
+}
+.modal-close {
+  position: absolute; top: 16px; right: 16px;
+  width: 44px; height: 44px; min-height: 44px; border-radius: 50%;
+  border: 2px solid var(--line); background: var(--card); color: var(--ink-soft);
+  font-size: 19px; cursor: pointer; padding: 0;
+}
+.modal-close:hover { border-color: var(--accent); color: var(--accent); }
+.modal-box .btn.wide { margin-top: 20px; }
