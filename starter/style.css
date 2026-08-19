@@ -181,6 +181,12 @@ input:focus, textarea:focus { border-color: var(--accent); background: #fff; }
 .field.next-up input:focus,
 .field.next-up textarea:focus { border-color: var(--line); background: var(--card); }
 
+/* 키보드로 옮겨 다닐 때 생기는 초점 표시도 끕니다.
+   바깥 상자가 이미 "여기입니다"를 보여 주고 있어서,
+   안쪽에 하나 더 그리면 테두리가 이중으로 보입니다. */
+.field.next-up input:focus-visible,
+.field.next-up textarea:focus-visible { outline: none; }
+
 .help { font-size: 17px; color: var(--ink-soft); margin: 8px 0 0; }
 
 

@@ -1,0 +1,110 @@
+/* =============================================================
+   직원용 화면 전용 스타일
+   색과 글꼴은 ../style.css 의 것을 그대로 씁니다.
+   여기에는 표·비밀번호 화면처럼 직원용에만 있는 것만 적습니다.
+   ============================================================= */
+
+body { font-size: 17px; padding-bottom: 60px; }
+.wrap { max-width: 1200px; }
+h1 { font-size: 30px; margin: 0 0 6px; }
+.sub { margin: 0 0 22px; color: var(--ink-soft); font-size: 17px; }
+
+
+/* ---------- 직원용 안쪽 탭 ---------- */
+
+.subtabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+.subtabs a {
+  font-size: 17px; color: var(--brand); text-decoration: none;
+  background: var(--card); border: 2px solid var(--line); border-radius: 999px;
+  padding: 11px 20px; min-height: 48px; display: inline-flex; align-items: center;
+}
+.subtabs a:hover { border-color: var(--accent); }
+.subtabs a.on { color: #fff; background: var(--brand); border-color: var(--brand); font-weight: 700; }
+
+
+/* ---------- 숫자 상자 ---------- */
+
+.counts { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 22px; }
+.box {
+  background: var(--card); border: 2px solid var(--line); border-radius: 18px;
+  box-shadow: 0 3px 12px rgba(74,53,41,.07);
+  padding: 16px 24px; min-width: 160px;
+}
+.box .label { font-size: 15px; color: var(--ink-soft); }
+.box .num { font-size: 40px; font-weight: 800; display: block; line-height: 1.15; color: var(--brand); }
+.box.warn { border-color: var(--accent); }
+.box.warn .num { color: var(--accent); }
+
+
+/* ---------- 표 ---------- */
+
+.scroll { overflow-x: auto; background: var(--card);
+          border: 2px solid var(--line); border-radius: 18px; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border-bottom: 1px solid var(--line); padding: 12px 14px; text-align: left; white-space: nowrap; }
+th { background: var(--brand-pale); font-size: 15px; font-weight: 700; color: var(--brand); }
+td { font-size: 16px; vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+td.num, th.num { text-align: right; }
+tr.total td { font-weight: 800; background: var(--brand-pale); }
+tr.check td { background: var(--accent-pale); }
+
+.tag { display: inline-block; background: var(--accent); color: #fff;
+       border-radius: 999px; padding: 2px 12px; font-size: 14px; font-weight: 700; }
+.muted { color: var(--ink-soft); font-size: 14px; }
+.blank { color: var(--gray); }
+.empty { border: 2px dashed var(--line); border-radius: 18px; padding: 30px;
+         text-align: center; font-size: 19px; color: var(--ink-soft); }
+
+
+/* ---------- 찾기 줄 ---------- */
+
+.bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 18px 0; }
+.bar input[type=text], .bar select {
+  font-family: inherit; font-size: 17px; padding: 11px 14px; min-height: 50px;
+  border: 2px solid var(--line); border-radius: 12px; background: var(--card); width: auto;
+}
+.bar button, .doc-foot button, #lock button, .counts + button {
+  font-family: inherit; font-size: 17px; font-weight: 700;
+  padding: 12px 22px; min-height: 50px; border-radius: 999px;
+  color: #fff; background: var(--brand); border: 2px solid var(--brand); cursor: pointer;
+}
+.bar button.ghost, .doc-foot button.ghost {
+  color: var(--brand); background: var(--card);
+}
+button:disabled { background: var(--gray); border-color: var(--gray); }
+label.chk { font-size: 17px; display: inline-flex; align-items: center; gap: 8px; }
+label.chk input { width: 22px; height: 22px; accent-color: var(--accent); }
+
+#msg, #list-info, #page-info { font-size: 17px; font-weight: 600; color: var(--ink-soft); }
+
+
+/* ---------- 문서 고치기 ---------- */
+
+.doc { background: var(--card); border: 2px solid var(--line); border-radius: 18px;
+       padding: 20px 22px; margin-bottom: 14px; box-shadow: 0 3px 12px rgba(74,53,41,.06); }
+.doc.off { opacity: .55; }
+.doc-head { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.doc-head .no { font-size: 14px; color: var(--ink-soft); }
+.doc-head .when { margin-left: auto; font-size: 14px; color: var(--ink-soft); }
+.doc input[type=text] { font-size: 19px; font-weight: 700; margin-bottom: 10px; }
+.doc textarea { min-height: 120px; }
+.doc-foot { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+.doc-foot .state { margin-left: auto; font-size: 15px; font-weight: 700; }
+.doc-foot .state.saved { color: #1F7A3D; }
+.doc-foot .state.dirty { color: var(--accent); }
+
+
+/* ---------- 비밀번호 화면 ---------- */
+
+#lock { max-width: 440px; margin: 70px auto; background: var(--card);
+        border: 2px solid var(--line); border-radius: 22px; padding: 32px;
+        box-shadow: 0 6px 24px rgba(74,53,41,.12); }
+#lock h1 { font-size: 25px; }
+#lock p { color: var(--ink-soft); }
+#lock input { width: 100%; font-size: 24px; letter-spacing: 8px; text-align: center;
+              padding: 15px; min-height: 62px; }
+#lock button { width: 100%; margin-top: 16px; min-height: 60px; font-size: 19px; }
+#lock .err { background: var(--accent-pale); border-left: 8px solid var(--accent);
+             border-radius: 12px; padding: 14px 18px; margin-top: 16px; font-weight: 700; }
+#lock a { font-size: 16px; color: var(--ink-soft); }

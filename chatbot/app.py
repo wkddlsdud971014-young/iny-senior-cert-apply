@@ -32,21 +32,29 @@ FAQ_PATH = HERE / "faq.json"
 # 키 읽기 — .env 파일에서만 읽습니다. 코드에 적지 않습니다.
 # =============================================================
 
-def load_api_key():
+def load_env():
+    """.env 파일을 읽어 값들을 돌려줍니다. 코드에 키를 적지 않습니다."""
+    out = {}
     env = HERE / ".env"
-    if not env.exists():
-        return ""
-    for line in env.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line.startswith("#") or "=" not in line:
-            continue
-        k, v = line.split("=", 1)
-        if k.strip() == "GEMINI_API_KEY":
-            return v.strip()
-    return ""
+    if env.exists():
+        for line in env.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            out[k.strip()] = v.strip()
+    # 배포(Hugging Face 등)에서는 서버 환경변수를 씁니다.
+    for k in ("GEMINI_API_KEY", "SUPABASE_URL", "SUPABASE_ANON_KEY"):
+        out.setdefault(k, os.environ.get(k, ""))
+        if not out[k]:
+            out[k] = os.environ.get(k, "")
+    return out
 
 
-GEMINI_API_KEY = load_api_key()
+ENV = load_env()
+GEMINI_API_KEY    = ENV.get("GEMINI_API_KEY", "")
+SUPABASE_URL      = ENV.get("SUPABASE_URL", "")
+SUPABASE_ANON_KEY = ENV.get("SUPABASE_ANON_KEY", "")
 
 
 # =============================================================
@@ -129,10 +137,36 @@ def tokens(text):
     return base
 
 
+def load_docs():
+    """챗봇이 읽을 문서를 가져옵니다.
+
+    Supabase 의 faq_docs 표에서 읽습니다.
+    직원이 웹 화면에서 문서를 고치면 챗봇 답이 바로 바뀝니다. (인수검사 6번)
+    질문을 받을 때마다 새로 읽습니다. 고친 것이 바로 반영되어야 하기 때문입니다.
+
+    인터넷이 안 되거나 표를 못 읽으면 파일(faq.json)로 물러섭니다.
+    챗봇이 아예 멈추는 것보다는 낫기 때문입니다.
+    """
+    if SUPABASE_URL and SUPABASE_ANON_KEY:
+        try:
+            url = (SUPABASE_URL + "/rest/v1/faq_docs"
+                   "?select=title,content&is_active=eq.true&order=sort_order")
+            req = urllib.request.Request(url, headers={
+                "apikey": SUPABASE_ANON_KEY,
+                "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+            })
+            with urllib.request.urlopen(req, timeout=10) as r:
+                rows = json.loads(r.read())
+            if rows:
+                return [{"title": r["title"], "text": r["content"]} for r in rows]
+        except Exception as e:
+            print(f"  [문서] 표를 못 읽어 파일로 대신합니다: {e}")
+
+    return json.loads(FAQ_PATH.read_text(encoding="utf-8"))
+
+
 def search(question):
-    """faq.json 을 매번 새로 읽습니다.
-       문서를 고치면 챗봇 답이 바로 바뀌어야 하기 때문입니다. (인수검사 6번)"""
-    faqs = json.loads(FAQ_PATH.read_text(encoding="utf-8"))
+    faqs = load_docs()
     q = tokens(question)
 
     ranked = []

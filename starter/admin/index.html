@@ -4,65 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>접수 내역 · 두두자격지원센터</title>
-<style>
-  * { box-sizing: border-box; }
-  body {
-    font-family: system-ui, "Apple SD Gothic Neo", sans-serif;
-    font-size: 18px; line-height: 1.6; color: #000; background: #fff;
-    margin: 0; padding: 24px 16px 80px;
-  }
-  .wrap { max-width: 1100px; margin: 0 auto; }
-  h1 { font-size: 30px; margin: 0 0 4px; }
-  h2 { font-size: 22px; margin: 36px 0 12px; }
-  .sub { margin: 0 0 24px; color: #333; }
-
-  /* 오늘 몇 건 — 발주처 문제 12번 "눈으로 셈, 자주 틀림" */
-  .counts { display: flex; gap: 12px; flex-wrap: wrap; }
-  .count-box { border: 4px solid #000; padding: 16px 24px; min-width: 160px; }
-  .count-box .label { font-size: 17px; }
-  .count-box .num { font-size: 44px; font-weight: bold; display: block; }
-  .count-box.warn { border-style: dashed; }
-
-  button.reload {
-    font-family: inherit; font-size: 19px; font-weight: bold;
-    padding: 14px 24px; min-height: 56px; margin-top: 20px;
-    color: #fff; background: #000; border: 3px solid #000; cursor: pointer;
-  }
-  button.reload:disabled { background: #767676; border-color: #767676; }
-
-  table { border-collapse: collapse; width: 100%; margin-top: 8px; }
-  th, td { border: 2px solid #000; padding: 10px 12px; text-align: left; vertical-align: top; }
-  th { background: #eee; font-size: 17px; white-space: nowrap; }
-  td { font-size: 18px; }
-  tr.check td { background: #f2f2f2; }
-
-  .tag { display: inline-block; border: 2px solid #000; padding: 1px 8px; font-size: 15px; font-weight: bold; }
-  .muted { color: #555; font-size: 15px; }
-  .empty { border: 3px solid #000; padding: 24px; text-align: center; font-size: 20px; }
-  #msg { font-size: 19px; font-weight: bold; }
-  .scroll { overflow-x: auto; }
-
-  /* 화면 사이를 오가는 탭 */
-  .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
-  .tabs a { font-size: 17px; color: #333; text-decoration: none;
-            border: 2px solid #767676; padding: 10px 16px; }
-  .tabs a.on { color: #fff; background: #000; border-color: #000; font-weight: bold; }
-
-  /* 비밀번호 화면 */
-  #lock { max-width: 420px; margin: 60px auto; border: 4px solid #000; padding: 28px; }
-  #lock h1 { font-size: 26px; margin: 0 0 8px; }
-  #lock p { margin: 0 0 20px; }
-  #lock input {
-    width: 100%; font-family: inherit; font-size: 22px; letter-spacing: 6px;
-    padding: 14px; min-height: 58px; border: 3px solid #000; text-align: center;
-  }
-  #lock button {
-    width: 100%; margin-top: 16px; font-family: inherit; font-size: 20px; font-weight: bold;
-    padding: 16px; min-height: 58px; color: #fff; background: #000; border: 3px solid #000; cursor: pointer;
-  }
-  #lock .err { color: #000; font-weight: bold; border: 3px solid #000; padding: 12px; margin-top: 16px; }
-  #lock .back { display: block; margin-top: 20px; font-size: 17px; color: #333; }
-</style>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="admin.css">
 </head>
 
 <body>
@@ -77,18 +20,33 @@
     <button type="submit">들어가기</button>
   </form>
   <p class="err" id="lock-err" hidden>비밀번호가 맞지 않습니다.</p>
-  <a class="back" href="../index.html">← 접수 화면으로 돌아가기</a>
+  <a class="back" href="../index.html">← 홈으로 돌아가기</a>
 </div>
 
-<div class="wrap" id="main" hidden>
-  <div class="tabs">
-    <a href="index.html" class="on">우리 접수</a>
-    <a href="integrated.html">통합 내역</a>
-    <a href="../index.html">← 접수 화면</a>
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="home" href="../index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M9.75 20v-5.5h4.5V20"/></svg> 홈</a>
+    <ul class="menu">
+      <li><a href="../apply.html">접수 신청</a></li>
+      <li><a href="../faq.html">물어보기</a></li>
+    </ul>
+    <ul class="util">
+      <li><a href="../check.html">접수 확인</a></li>
+      <li><a href="index.html" class="on">직원용</a></li>
+    </ul>
   </div>
+</nav>
+
+<div class="wrap" id="main" hidden>
 
   <h1>접수 내역</h1>
   <p class="sub">두두자격지원센터 · 시각은 모두 한국 시간입니다</p>
+
+  <div class="subtabs">
+    <a href="index.html" class="on">우리 접수</a>
+    <a href="integrated.html">통합 내역</a>
+    <a href="faq.html">문서 고치기</a>
+  </div>
 
   <div class="counts">
     <div class="count-box">
