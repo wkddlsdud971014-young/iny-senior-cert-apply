@@ -92,7 +92,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .nav .util { margin-left: auto; }
 .nav .util a { font-size: 17px; color: #D3C1AF; padding: 0 16px; }
 .nav .util .signup { color: #fff; font-weight: 700; }
-.nav .util .staff { font-size: 15px; color: #B5A192; }
+/* 직원용은 신청자가 실수로 누르지 않게 색만 흐리게 합니다.
+   글자 크기는 옆의 「접수 확인」과 같게 둡니다. */
+.nav .util .staff { color: #B5A192; }
 
 /* ---------- 카드 ---------- */
 
