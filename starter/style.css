@@ -1,0 +1,501 @@
+/* =============================================================
+   두두자격지원센터 — 공통 스타일 (시니어 접근성)
+
+   [색을 이렇게 정한 이유]
+   1. 배경을 순백이 아니라 베이지로.
+      나이가 들면 수정체가 빛을 흩어뜨려 순백 화면이 눈부십니다.
+   2. 글자를 순검정이 아니라 따뜻한 진갈색으로.
+      순검정+순백은 대비가 지나쳐 글자가 번져 보입니다. 대비 13:1로 충분합니다.
+   3. 파랑 계열을 쓰지 않습니다.
+      나이가 들면 수정체가 누레져 파랑·보라 구분이 어려워집니다.
+      진갈색(주요) + 테라코타(강조) 두 색만 씁니다.
+   4. 색만으로 뜻을 나타내지 않습니다.
+      고른 카드는 색 + 두꺼운 테두리 + "✔ 선택됨" 글자, 세 가지로 표시합니다.
+   5. 모서리를 둥글게, 그림자를 옅게.
+      각진 검정 테두리는 답답해 보이고, 경계는 그림자로도 충분히 구분됩니다.
+
+   근거: 이용자 50대 41% / 60대 38% / 70대 이상 14%
+   ============================================================= */
+
+:root {
+  --bg:         #F7F2E9;   /* 베이지 */
+  --bg-2:       #FBF8F2;
+  --card:       #FFFFFF;
+  --band:       #EFE7D9;
+
+  --ink:        #2B2118;   /* 본문 (배경 대비 13.4:1) */
+  --ink-soft:   #6B5B4B;   /* 보조 (대비 5.6:1) */
+
+  --brand:      #4A3529;   /* 진갈색 — 메뉴바, 주요 버튼 (흰 글씨 대비 10.1:1) */
+  --brand-2:    #33241B;
+  --brand-pale: #F0E7DC;
+
+  --accent:     #BE5427;   /* 테라코타 — 강조, 현재 위치 */
+  --accent-pale:#FAEADF;
+
+  --line:       #E3D8C6;
+  --gray:       #A99madeup;
+}
+:root { --gray: #9C8C7A; }
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: "Pretendard", -apple-system, system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font-size: 20px;
+  line-height: 1.8;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  background: var(--bg);
+  margin: 0;
+  padding: 0 0 40px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: 1000px; margin: 0 auto; padding: 0 20px; }
+
+h1 { font-size: 34px; line-height: 1.4; margin: 0 0 14px; letter-spacing: -0.03em; }
+h2 { font-size: 26px; line-height: 1.4; margin: 40px 0 16px; letter-spacing: -0.02em; }
+h3 { font-size: 22px; margin: 24px 0 8px; }
+p  { margin: 0 0 14px; }
+b, strong { font-weight: 700; }
+a { color: var(--brand); }
+
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 4px solid var(--accent); outline-offset: 3px; border-radius: 4px;
+}
+
+
+/* ---------- 맨 위 메뉴바 ----------
+   한 줄로 낮게 유지합니다. 페이지를 옮겨도 높이가 같아야
+   화면이 튀지 않고 어디에 있는지 잃지 않습니다. */
+
+.nav { background: var(--brand); margin-bottom: 26px; }
+.nav-inner {
+  max-width: 1000px; margin: 0 auto; padding: 0 20px;
+  display: flex; align-items: stretch; gap: 4px; min-height: 66px; flex-wrap: wrap;
+}
+
+.nav a {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 19px; font-weight: 600; color: #E8DCCF;
+  text-decoration: none; padding: 0 20px; min-height: 66px;
+}
+.nav a:hover { background: var(--brand-2); color: #fff; }
+.nav a.on { color: var(--brand); background: var(--bg); font-weight: 800; }
+
+/* 홈 아이콘 */
+.nav .home { font-weight: 800; color: #fff; padding-left: 12px; }
+.nav .home svg { width: 24px; height: 24px; }
+
+.nav ul { list-style: none; display: flex; margin: 0; padding: 0; }
+.nav .util { margin-left: auto; }
+.nav .util a { font-size: 17px; color: #D3C1AF; padding: 0 16px; }
+.nav .util .signup { color: #fff; font-weight: 700; }
+.nav .util .staff { font-size: 15px; color: #B5A192; }
+
+/* ---------- 카드 ---------- */
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: 0 3px 14px rgba(74, 53, 41, .08);
+  margin-bottom: 22px;
+  padding: 0 30px 28px;
+  overflow: hidden;
+}
+.card h2 {
+  background: var(--brand-pale); color: var(--brand);
+  margin: 0 -30px 26px; padding: 20px 30px;
+  font-size: 24px; font-weight: 800;
+  border-bottom: 1px solid var(--line);
+}
+.card > *:last-child { margin-bottom: 0; }
+
+.step-no {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  font-size: 20px; font-weight: 800; margin-right: 10px; vertical-align: -8px;
+}
+
+.notice {
+  background: var(--accent-pale);
+  border: 1px solid #EBC9B2;
+  border-left: 8px solid var(--accent);
+  border-radius: 14px;
+  padding: 14px 20px; margin: 22px 0 0; font-weight: 600; font-size: 18px;
+}
+
+
+/* ---------- 자격증 고르는 카드 ---------- */
+
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+
+.pick {
+  display: block; width: 100%; text-align: left;
+  font-family: inherit; font-size: 20px; color: var(--ink); background: var(--card);
+  border: 2px solid var(--line); border-radius: 16px;
+  padding: 20px; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(74, 53, 41, .05);
+  transition: border-color .12s, background .12s;
+}
+.pick:hover { border-color: var(--accent); background: #FFFCF8; }
+
+/* 고른 것: ① 두꺼운 테라코타 테두리 ② 옅은 배경 ③ "✔ 선택됨" 글자 */
+.pick.on {
+  border: 5px solid var(--accent); background: var(--accent-pale); padding: 17px;
+  box-shadow: 0 4px 16px rgba(190, 84, 39, .18);
+}
+
+.pick .cert-name { font-size: 25px; font-weight: 800; display: block; letter-spacing: -0.03em; }
+.pick .cert-info { font-size: 17px; color: var(--ink-soft); display: block; margin-top: 4px; }
+.pick .cert-fee  { font-size: 21px; font-weight: 800; display: block; margin-top: 12px; color: var(--brand); }
+.pick .cert-note {
+  font-size: 17px; display: block; margin-top: 12px; padding-top: 12px;
+  border-top: 1px solid var(--line); color: var(--accent); font-weight: 600;
+}
+.pick .picked { display: none; font-size: 20px; font-weight: 800; margin-top: 14px; color: var(--accent); }
+.pick.on .picked { display: block; }
+
+
+/* ---------- 입력칸 ---------- */
+
+label { display: block; font-size: 22px; font-weight: 700; margin: 28px 0 8px; }
+.optional { font-weight: 400; font-size: 18px; color: var(--ink-soft); }
+
+input, textarea {
+  width: 100%; font-family: inherit; font-size: 21px;
+  padding: 16px 18px; min-height: 62px;
+  border: 2px solid var(--line); border-radius: 14px;
+  background: var(--bg-2); color: var(--ink);
+}
+textarea { min-height: 104px; }
+input:focus, textarea:focus { border-color: var(--accent); background: #fff; }
+
+.help { font-size: 17px; color: var(--ink-soft); margin: 8px 0 0; }
+
+
+/* ---------- 버튼 ---------- */
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  text-decoration: none; font-family: inherit;
+  font-size: 21px; font-weight: 700;
+  padding: 15px 30px; min-height: 60px; border-radius: 999px;
+  color: #fff; background: var(--brand); border: 2px solid var(--brand); cursor: pointer;
+  box-shadow: 0 3px 12px rgba(74, 53, 41, .18);
+}
+.btn:hover { background: var(--brand-2); border-color: var(--brand-2); }
+.btn.ghost { color: var(--brand); background: var(--card); box-shadow: 0 2px 8px rgba(74,53,41,.08); }
+.btn.ghost:hover { background: var(--brand-pale); }
+.btn.wide { width: 100%; margin-top: 36px; font-size: 24px; min-height: 74px; }
+.btn:disabled { background: var(--gray); border-color: var(--gray); box-shadow: none; cursor: default; }
+
+.btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 0 0 26px; }
+
+
+/* ---------- 안내 문구 ---------- */
+
+#msg { font-size: 20px; font-weight: 700; margin: 22px 0 0; }
+#msg.warn {
+  background: var(--accent-pale); border: 1px solid #EBC9B2;
+  border-left: 8px solid var(--accent); border-radius: 14px;
+  padding: 18px 22px; color: var(--ink);
+}
+
+
+/* ---------- 접수 완료 ---------- */
+
+#done {
+  background: var(--card); border: 2px solid var(--accent); border-radius: 20px;
+  padding: 0 30px 30px; margin-top: 26px; overflow: hidden;
+  box-shadow: 0 4px 18px rgba(190, 84, 39, .14);
+}
+#done h2 { background: var(--accent); color: #fff; margin: 0 -30px 26px; padding: 20px 30px; border: none; }
+#done .num {
+  font-size: 64px; font-weight: 800; display: block; margin: 8px 0 20px;
+  color: var(--accent); letter-spacing: 1px; line-height: 1.1;
+}
+#done dl { margin: 24px 0 0; }
+#done dt { font-weight: 700; margin-top: 16px; color: var(--ink-soft); font-size: 17px; }
+#done dd { margin: 0; font-size: 21px; font-weight: 600; }
+
+
+/* ---------- 목록 ---------- */
+
+.list { list-style: none; padding: 0; margin: 0; }
+.list li { border-bottom: 1px solid var(--line); padding: 16px 0; }
+.list li:last-child { border-bottom: none; padding-bottom: 0; }
+
+
+/* ---------- 맨 아래 ---------- */
+
+.foot {
+  background: var(--band); border-radius: 20px;
+  margin-top: 52px; padding: 24px 26px; font-size: 17px; color: var(--ink-soft);
+}
+
+
+/* =============================================================
+   홈 화면
+   ============================================================= */
+
+.hero { padding: 4px 0 0; }
+.hero .eyebrow {
+  display: inline-block; font-size: 17px; font-weight: 700; color: var(--accent);
+  background: var(--accent-pale); border-radius: 999px; padding: 6px 16px; margin: 0 0 14px;
+}
+.hero h1 { font-size: 40px; line-height: 1.28; margin: 0 0 14px; }
+.hero h1 .light { font-weight: 400; color: var(--ink-soft); }
+.hero .lead { font-size: 19px; color: var(--ink-soft); margin: 0 0 22px; line-height: 1.65; }
+
+.steps-title { font-size: 19px; font-weight: 700; margin: 0 0 12px; color: var(--ink-soft); }
+
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.step {
+  background: var(--card); border: 1px solid var(--line); border-radius: 20px;
+  box-shadow: 0 3px 14px rgba(74, 53, 41, .08);
+  padding: 22px 18px; text-align: center;
+}
+.step .n {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 46px; height: 46px; border-radius: 50%;
+  background: var(--accent-pale); color: var(--accent);
+  font-size: 22px; font-weight: 800; margin-bottom: 10px;
+}
+.step .t { font-size: 21px; font-weight: 800; display: block; margin-bottom: 6px; letter-spacing: -0.02em; }
+.step .d { font-size: 16px; color: var(--ink-soft); display: block; line-height: 1.55; }
+
+
+/* ---------- 화면이 좁을 때 ---------- */
+
+@media (max-width: 640px) {
+  body { font-size: 19px; }
+  .hero h1 { font-size: 30px; }
+  .steps { grid-template-columns: 1fr; gap: 12px; }
+  .step { display: flex; align-items: center; gap: 18px; text-align: left; padding: 22px; }
+  .step .n { margin-bottom: 0; flex: 0 0 52px; }
+  .nav-inner { min-height: 0; padding: 6px 12px; }
+  .nav a { min-height: 54px; padding: 0 14px; font-size: 18px; }
+  .nav .util { margin-left: 0; width: 100%; }
+  .card { padding: 0 20px 22px; }
+  .card h2 { margin: 0 -20px 20px; padding: 17px 20px; font-size: 22px; }
+}
+
+
+/* =============================================================
+   홈 — 자격증 고르기
+   아이콘을 크게 넣은 이유: 글자를 읽기 전에 그림으로 먼저 알아보시게.
+   ============================================================= */
+
+.cert-title { font-size: 19px; font-weight: 700; margin: 34px 0 12px; color: var(--ink-soft); }
+
+.cert-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+}
+@media (max-width: 1000px) { .cert-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.cert-link {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  background: var(--card); border: 2px solid var(--line); border-radius: 18px;
+  box-shadow: 0 3px 12px rgba(74, 53, 41, .07);
+  padding: 18px 12px 16px; text-decoration: none; color: var(--ink);
+  min-height: 200px; justify-content: flex-start;
+  transition: border-color .12s, transform .12s, box-shadow .12s;
+}
+.cert-link:hover {
+  border-color: var(--accent); transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(190, 84, 39, .18);
+}
+.cert-link .ico { font-size: 40px; line-height: 1.1; margin-bottom: 8px; }
+.cert-link .nm  { font-size: 19px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.35; }
+.cert-link .og  { font-size: 14px; color: var(--ink-soft); margin-top: 4px; line-height: 1.4; }
+.cert-link .md  { font-size: 14px; color: var(--ink-soft); }
+.cert-link .fe  { font-size: 16px; color: var(--brand); margin-top: 8px; font-weight: 600; }
+.cert-link .nt  {
+  font-size: 13px; color: var(--accent); font-weight: 600; margin-top: 8px;
+  border-top: 1px solid var(--line); padding-top: 8px; width: 100%; line-height: 1.4;
+}
+.cert-link .fe.na { color: var(--accent); font-weight: 600; }
+
+@media (max-width: 900px) { .cert-grid { grid-template-columns: repeat(2, 1fr); } }
+
+
+/* ---------- 오른쪽 아래 따라다니는 챗봇 버튼 ---------- */
+/* 테라코타를 쓴 이유: 나머지가 전부 진갈색이라 혼자 눈에 띕니다. */
+
+.float-chat {
+  position: fixed; right: 24px; bottom: 24px; z-index: 50;
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: inherit; font-size: 19px; font-weight: 700;
+  padding: 16px 24px; min-height: 60px; border-radius: 999px;
+  color: #fff; background: var(--accent); border: 3px solid #fff;
+  text-decoration: none; cursor: pointer;
+  box-shadow: 0 6px 20px rgba(190, 84, 39, .38);
+}
+.float-chat:hover { background: #9C4420; }
+
+@media (max-width: 640px) {
+  .float-chat { right: 14px; bottom: 14px; padding: 14px 18px; font-size: 18px; }
+}
+
+
+/* ---------- 고르신 자격증 요약 ---------- */
+.summary {
+  background: var(--brand-pale); border: 2px solid var(--line); border-radius: 16px;
+  padding: 18px 22px; margin: 4px 0 8px;
+}
+.summary .lbl { font-size: 16px; color: var(--ink-soft); display: block; }
+.summary .cert { font-size: 24px; font-weight: 800; display: block; margin: 2px 0 8px; }
+.summary .fee  { font-size: 22px; font-weight: 800; color: var(--brand); }
+.summary .fee.na { color: var(--accent); font-size: 19px; }
+.summary .sub  { font-size: 16px; color: var(--ink-soft); display: block; margin-bottom: 8px; }
+.summary .note {
+  display: block; font-size: 16px; color: var(--accent); font-weight: 600;
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line);
+}
+.summary .change {
+  display: inline-block; margin-top: 14px; font-size: 16px;
+  color: var(--ink-soft); text-decoration: underline;
+}
+
+/* ---------- 동의 ---------- */
+label.agree {
+  display: flex; align-items: flex-start; gap: 12px;
+  font-size: 20px; font-weight: 400; margin: 22px 0 0; cursor: pointer;
+}
+label.agree input { width: 28px; height: 28px; min-height: 0; flex: 0 0 28px; margin-top: 4px; accent-color: var(--accent); }
+.agree-body {
+  border-left: 4px solid var(--line); margin: 10px 0 0 40px; padding: 4px 0 4px 16px;
+  font-size: 17px; color: var(--ink-soft);
+}
+.agree-body p { margin: 0 0 6px; }
+.unknown {
+  display: inline-block; background: var(--accent-pale); color: var(--accent);
+  border-radius: 8px; padding: 1px 10px; font-weight: 700; font-size: 16px;
+}
+.prep {
+  background: var(--bg); border-radius: 14px; padding: 16px 20px; margin-top: 24px;
+  font-size: 17px;
+}
+.prep p { margin: 0 0 6px; }
+
+
+/* ---------- (안내 모달은 완료 화면 안으로 옮겼습니다) ---------- */
+.__unused
+.modal {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(43, 33, 24, .55);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-box {
+  background: var(--card); border-radius: 22px; max-width: 520px; width: 100%;
+  padding: 30px; box-shadow: 0 12px 40px rgba(43, 33, 24, .35);
+  max-height: 90vh; overflow-y: auto;
+}
+.modal-box h2 {
+  margin: 0 0 16px; font-size: 26px; padding-bottom: 14px;
+  border-bottom: 3px solid var(--accent);
+}
+.modal-box .list li { font-size: 19px; }
+.modal-warn {
+  background: var(--accent-pale); border-left: 8px solid var(--accent);
+  border-radius: 12px; padding: 14px 18px; margin: 20px 0 0; font-size: 17px;
+}
+.modal-box .btn.wide { margin-top: 22px; }
+
+
+/* ---------- 완료 화면 안의 다음 안내 ---------- */
+.done-next {
+  background: var(--accent-pale); border: 2px solid #EBC9B2; border-radius: 16px;
+  padding: 20px 24px; margin-top: 26px;
+}
+.done-next .dn-title { font-size: 21px; line-height: 1.5; margin: 0 0 12px; }
+.done-next .list li { font-size: 18px; border-bottom-color: #EBC9B2; }
+.done-next .dn-warn { font-size: 16px; color: var(--ink-soft); margin: 14px 0 0; }
+
+
+/* ---------- 동의 상자 ---------- */
+.agree-box {
+  background: var(--bg); border: 2px solid var(--line); border-radius: 16px;
+  padding: 20px 24px 24px; margin-top: 6px;
+}
+.agree-lead { font-size: 18px; color: var(--ink-soft); margin: 0 0 6px; }
+label.agree {
+  background: var(--card); border: 2px solid var(--line); border-radius: 14px;
+  padding: 16px 18px; margin: 14px 0 0; align-items: center;
+}
+label.agree:hover { border-color: var(--accent); }
+/* 체크되면 확실히 표시 — 색 + 테두리 + 체크박스 색, 세 가지 */
+label.agree.done { border-color: var(--accent); background: var(--accent-pale); }
+.agree-body { margin: 10px 0 0 18px; }
+
+
+/* =============================================================
+   다음에 하실 차례를 알려 주는 표시
+   어르신이 "이제 뭘 해야 하나" 찾지 않으시도록,
+   지금 채우실 곳 하나에만 테라코타 테두리와 "여기" 표를 붙입니다.
+   ============================================================= */
+
+.field { border-radius: 16px; padding: 4px; margin: 0 -4px; position: relative; }
+
+.next-up {
+  outline: 4px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 16px;
+  animation: nudge 1.6s ease-in-out infinite;
+}
+.next-up::before {
+  content: "여기를 채워 주십시오";
+  position: absolute; top: -15px; left: 14px; z-index: 2;
+  background: var(--accent); color: #fff;
+  font-size: 15px; font-weight: 700; border-radius: 999px; padding: 3px 14px;
+  white-space: nowrap;
+}
+#send-btn.next-up::before { content: "누르시면 접수됩니다"; top: -13px; left: 20px; }
+#agree-box.next-up::before { content: "두 가지에 체크해 주십시오"; }
+#f-cert.next-up::before { content: "하나를 골라 주십시오"; }
+
+@keyframes nudge {
+  0%, 100% { outline-color: var(--accent); }
+  50%      { outline-color: #EBC9B2; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .next-up { animation: none; }
+}
+
+#send-btn { position: relative; }
+
+
+/* ---------- 홈: 접수하러 가기 버튼 ---------- */
+.btn.start {
+  width: 100%; margin: 26px 0 8px;
+  font-size: 24px; min-height: 74px;
+}
+
+/* 누르기 전에는 자격증 칸을 흐리게 — 한 번에 한 가지만 보시게 */
+.cert-zone { transition: opacity .25s; }
+.cert-zone.locked { opacity: .28; pointer-events: none; user-select: none; filter: grayscale(1); }
+
+/* 누르면 선명해지면서 테두리로 "여기입니다" 표시 */
+.cert-zone.open {
+  position: relative; border-radius: 20px; padding: 14px; margin: 0 -14px;
+  outline: 4px solid var(--accent); outline-offset: 2px;
+  animation: nudge 1.6s ease-in-out infinite;
+}
+.cert-zone.open::before {
+  content: "하나를 골라 주십시오";
+  position: absolute; top: -15px; left: 20px; z-index: 2;
+  background: var(--accent); color: #fff;
+  font-size: 15px; font-weight: 700; border-radius: 999px; padding: 3px 14px;
+}
+.cert-zone.open .cert-title { margin-top: 6px; }
+
+
+/* 어르신이 쓰시는 다른 이름 (포크레인 등) */
+.cert-link .nm em {
+  display: block; font-style: normal; font-size: 15px;
+  font-weight: 600; color: var(--accent); margin-top: 2px;
+}
