@@ -11,8 +11,9 @@
 |---|---|
 | 자격증 | **한식조리기능사** (1순위) / 굴착기운전기능사 / 전기기능사 |
 | **범위** | **필기 접수까지. 실기 제외.** |
-| 계정 | `iny101400@gmail.com` (Supabase · Vercel · GitHub) — 다른 계정 사용 금지 |
-| 저장소 | Private로 시작 → 제출 후 Public 전환 검토 (9절 점검 후) |
+| 계정 | **`wkddlsdud971014@gmail.com`** (GitHub · Supabase · Vercel) — 수업 자료 계정. iny101400 사용 금지 |
+| 이름 규칙 | 폴더·저장소·배포명에 닉네임 **`iny`** 를 넣는다 (강사 요청). 계정과 이름은 별개 |
+| 저장소 | `wkddlsdud971014-young/iny-senior-cert-apply` (Public) |
 | 배포 루트 | `starter/` (Vercel Root Directory 설정) |
 | 발주처 | 두두자격지원센터 (수업용 가상 기관) |
 
@@ -178,7 +179,7 @@ git log -p --all -S 'SUPABASE_SERVICE' | head
 | 카드 | 내용 | 상태 |
 |---|---|---|
 | — | 프로젝트 인덱스 + git 저장소 | ✅ |
-| — | GitHub 연동 | ✅ `iny101400-young/senior-cert-apply` (Private) |
+| — | GitHub 연동 | ✅ `wkddlsdud971014-young/iny-senior-cert-apply` (Public) |
 | — | Supabase `applications` 테이블 | ⬜ |
 | — | Vercel 연동 | ⬜ |
 | A | 자격증 정하기 | ✅ 한식조리기능사 |
