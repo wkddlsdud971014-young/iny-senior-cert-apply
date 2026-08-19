@@ -41,11 +41,43 @@
   .empty { border: 3px solid #000; padding: 24px; text-align: center; font-size: 20px; }
   #msg { font-size: 19px; font-weight: bold; }
   .scroll { overflow-x: auto; }
+
+  /* 비밀번호 화면 */
+  #lock { max-width: 420px; margin: 60px auto; border: 4px solid #000; padding: 28px; }
+  #lock h1 { font-size: 26px; margin: 0 0 8px; }
+  #lock p { margin: 0 0 20px; }
+  #lock input {
+    width: 100%; font-family: inherit; font-size: 22px; letter-spacing: 6px;
+    padding: 14px; min-height: 58px; border: 3px solid #000; text-align: center;
+  }
+  #lock button {
+    width: 100%; margin-top: 16px; font-family: inherit; font-size: 20px; font-weight: bold;
+    padding: 16px; min-height: 58px; color: #fff; background: #000; border: 3px solid #000; cursor: pointer;
+  }
+  #lock .err { color: #000; font-weight: bold; border: 3px solid #000; padding: 12px; margin-top: 16px; }
+  #lock .back { display: block; margin-top: 20px; font-size: 17px; color: #333; }
 </style>
 </head>
 
 <body>
-<div class="wrap">
+
+<!-- 직원 확인 화면 -->
+<div id="lock">
+  <h1>직원용 화면입니다</h1>
+  <p>비밀번호를 넣어 주십시오.</p>
+  <form id="lock-form">
+    <label for="pw" style="position:absolute;left:-9999px;">비밀번호</label>
+    <input id="pw" type="password" inputmode="numeric" autocomplete="off" maxlength="8">
+    <button type="submit">들어가기</button>
+  </form>
+  <p class="err" id="lock-err" hidden>비밀번호가 맞지 않습니다.</p>
+  <a class="back" href="../index.html">← 접수 화면으로 돌아가기</a>
+</div>
+
+<div class="wrap" id="main" hidden>
+  <p style="text-align:right;margin:0 0 8px;">
+    <a href="../index.html" style="font-size:16px;color:#333;">← 접수 화면</a>
+  </p>
 
   <h1>접수 내역</h1>
   <p class="sub">두두자격지원센터 · 시각은 모두 한국 시간입니다</p>
@@ -75,6 +107,52 @@
   <div class="scroll"><div id="list"></div></div>
 
 </div>
+
+<script>
+// =============================================================
+// 직원 확인 (비밀번호)
+//
+// ⚠️ 이것은 진짜 보안이 아닙니다.
+//    브라우저에서 도는 검사라 소스 보기로 비밀번호가 보입니다.
+//    "신청하러 온 분이 실수로 눌러 들어가는 것"을 막는 용도입니다.
+//    실무라면 Supabase Auth로 로그인을 붙이고 RLS 정책을
+//    로그인한 직원만 조회 가능하도록 바꿔야 합니다.
+// =============================================================
+const ADMIN_PW = "0000";
+const KEY = "admin-ok";
+
+const lock     = document.getElementById("lock");
+const main     = document.getElementById("main");
+const lockForm = document.getElementById("lock-form");
+const pwBox    = document.getElementById("pw");
+const lockErr  = document.getElementById("lock-err");
+
+function unlock() {
+  lock.hidden = true;
+  main.hidden = false;
+  if (window.startAdmin) window.startAdmin();
+}
+
+// 탭을 닫으면 풀립니다 (sessionStorage)
+if (sessionStorage.getItem(KEY) === "1") {
+  unlock();
+} else {
+  pwBox.focus();
+}
+
+lockForm.addEventListener("submit", function (e) {
+  e.preventDefault();
+  if (pwBox.value === ADMIN_PW) {
+    sessionStorage.setItem(KEY, "1");
+    lockErr.hidden = true;
+    unlock();
+  } else {
+    lockErr.hidden = false;
+    pwBox.value = "";
+    pwBox.focus();
+  }
+});
+</script>
 
 <script src="../config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -218,7 +296,10 @@ function esc(v) {
 }
 
 btn.addEventListener("click", load);
-load();
+
+// 비밀번호를 통과한 뒤에 불러옵니다.
+window.startAdmin = load;
+if (!document.getElementById("main").hidden) load();
 </script>
 </body>
 </html>

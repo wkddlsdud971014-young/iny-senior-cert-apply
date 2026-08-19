@@ -20,6 +20,14 @@
 
   .wrap { max-width: 760px; margin: 0 auto; }
 
+  /* 직원용 링크. 신청자가 실수로 누르지 않게 작고 눈에 덜 띄게 둡니다. */
+  .topbar { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+  .topbar a {
+    font-size: 16px; color: #333; text-decoration: underline;
+    border: 2px solid #767676; padding: 8px 14px;
+  }
+  .topbar a:hover { color: #000; border-color: #000; }
+
   h1 { font-size: 32px; margin: 0 0 8px; }
   h2 { font-size: 26px; margin: 40px 0 16px; }
   .lead { margin: 0 0 8px; }
@@ -91,6 +99,8 @@
 
 <body>
 <div class="wrap">
+
+  <div class="topbar"><a href="admin/index.html">직원용 · 접수 내역</a></div>
 
   <h1>자격증 접수 신청</h1>
   <p class="lead">두두자격지원센터</p>
