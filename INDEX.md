@@ -178,7 +178,7 @@ git log -p --all -S 'SUPABASE_SERVICE' | head
 | 카드 | 내용 | 상태 |
 |---|---|---|
 | — | 프로젝트 인덱스 + git 저장소 | ✅ |
-| — | GitHub 연동 | ⬜ |
+| — | GitHub 연동 | ✅ `iny101400-young/senior-cert-apply` (Private) |
 | — | Supabase `applications` 테이블 | ⬜ |
 | — | Vercel 연동 | ⬜ |
 | A | 자격증 정하기 | ✅ 한식조리기능사 |
