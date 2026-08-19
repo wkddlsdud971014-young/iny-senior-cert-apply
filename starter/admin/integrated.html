@@ -210,7 +210,7 @@ function drawList() {
   let h = "<tr>" + cols.map(c=>`<th>${c[0]}</th>`).join("") + "</tr>";
   rows.forEach(r => {
     h += "<tr>" + cols.map(c => {
-      let v = cell(c[1] === "접수일시" ? String(r[c[1]] || "").slice(0, 10) : r[c[1]]);
+      let v = cell(r[c[1]]);
       if (c[2] && (r[c[2]]||"").trim() !== "" && r[c[2]] !== r[c[1]])
         v += `<br><span class="orig">원본 ${esc(r[c[2]])}</span>`;
       return `<td>${v}</td>`;

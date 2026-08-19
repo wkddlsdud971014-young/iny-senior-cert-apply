@@ -70,12 +70,29 @@ function overlap(a, b) {
 }
 
 // ---------- 정해진 답 ----------
-const ANSWER_PRACTICAL =
+// "언제 거절할지"는 아래 규칙(코드)이 정합니다. 직원이 바꿀 수 없습니다.
+// "뭐라고 말할지"는 문서(faq_docs)에서 읽습니다. 직원이 바꿀 수 있습니다.
+//   900번 안내문 · 모를 때
+//   910번 안내문 · 실기 질문
+// 문서를 못 읽으면 아래 기본 문구를 씁니다.
+
+const DEFAULT_PRACTICAL =
   "저희는 필기 접수만 도와드립니다. 실기는 저희가 안내하지 않습니다.";
 
-const ANSWER_UNKNOWN =
+const DEFAULT_UNKNOWN =
   "모르겠습니다. 저희가 확인하지 못한 내용이라 알려드릴 수 없습니다.\n" +
   "짐작해서 말씀드리면 잘못 안내될 수 있어 답을 드리지 않습니다.";
+
+const NOTICE_UNKNOWN   = "안내문 · 모를 때";
+const NOTICE_PRACTICAL = "안내문 · 실기 질문";
+
+function notice(docs, title, fallback) {
+  const d = docs.find(x => x.title === title);
+  return (d && d.content && d.content.trim()) ? d.content.trim() : fallback;
+}
+
+// 안내문은 근거 문서로 쓰지 않습니다. 답변 문구일 뿐이라서요.
+const isNotice = d => d.title === NOTICE_UNKNOWN || d.title === NOTICE_PRACTICAL;
 
 // "2차"는 넣지 않았습니다. 손해평가사·공인중개사는 필기를 1차, 그 다음을 2차라
 // 부르기 때문에, 2차를 실기로 보면 전문자격 질문까지 거절하게 됩니다.
@@ -103,14 +120,17 @@ const CANNOT_ANSWER = [
 
 const hasAny = (text, words) => words.some(w => text.includes(w));
 
-function fixedAnswer(question) {
+function fixedAnswer(question, docs) {
   const q = question.replace(/\s/g, "");
-  if (hasAny(q, PRACTICAL_WORDS)) return [ANSWER_PRACTICAL, "실기 질문"];
+  const unknown   = notice(docs, NOTICE_UNKNOWN,   DEFAULT_UNKNOWN);
+  const practical = notice(docs, NOTICE_PRACTICAL, DEFAULT_PRACTICAL);
+
+  if (hasAny(q, PRACTICAL_WORDS)) return [practical, "실기 질문"];
   for (const [subjects, topics, label] of UNKNOWN_RULES) {
-    if (hasAny(q, subjects) && hasAny(q, topics)) return [ANSWER_UNKNOWN, "확인 못 한 항목: " + label];
+    if (hasAny(q, subjects) && hasAny(q, topics)) return [unknown, "확인 못 한 항목: " + label];
   }
   for (const group of CANNOT_ANSWER) {
-    if (hasAny(q, group)) return [ANSWER_UNKNOWN, "저희 소관이 아닌 질문"];
+    if (hasAny(q, group)) return [unknown, "저희 소관이 아닌 질문"];
   }
   return [null, null];
 }
@@ -197,18 +217,20 @@ export default async function handler(req, res) {
   const question = String(req.body?.message || "").trim();
   if (!question) return res.status(200).json({ answer: "궁금하신 것을 적어 주십시오.", source: "" });
 
-  // 1~3) 정해진 답
-  const [fixed, why] = fixedAnswer(question);
+  const docs = await loadDocs();
+
+  // 1~3) 정해진 답 (거절 문구는 문서에서 읽습니다)
+  const [fixed, why] = fixedAnswer(question, docs);
   if (fixed) return res.status(200).json({ answer: fixed, source: why });
 
-  // 4~5) 검색
-  const docs = await loadDocs();
   if (!docs.length) {
-    return res.status(200).json({ answer: ANSWER_UNKNOWN, source: "문서를 읽지 못했습니다" });
+    return res.status(200).json({ answer: DEFAULT_UNKNOWN, source: "문서를 읽지 못했습니다" });
   }
 
+  // 4~5) 검색 (안내문은 근거에서 제외)
   const q = tokens(question);
   const ranked = docs
+    .filter(d => !isNotice(d))
     .map(d => ({
       score: overlap(q, tokens(d.title)) * 2 + overlap(q, tokens(d.content)),
       doc: d,
@@ -218,7 +240,10 @@ export default async function handler(req, res) {
     .slice(0, TOP_K);
 
   if (!ranked.length) {
-    return res.status(200).json({ answer: ANSWER_UNKNOWN, source: "문서에서 근거를 찾지 못함" });
+    return res.status(200).json({
+      answer: notice(docs, NOTICE_UNKNOWN, DEFAULT_UNKNOWN),
+      source: "문서에서 근거를 찾지 못함",
+    });
   }
 
   const context = ranked.map(x => `- ${x.doc.title}\n${x.doc.content}`).join("\n\n");

@@ -61,13 +61,31 @@ SUPABASE_ANON_KEY = ENV.get("SUPABASE_ANON_KEY", "")
 # 정해진 답 — 검색하기 전에 먼저 걸러냅니다
 # =============================================================
 
-# 발주서 50줄: "실기를 물으면 '저희는 필기 접수만 도와드립니다'로 답해야 합니다"
-ANSWER_PRACTICAL = "저희는 필기 접수만 도와드립니다. 실기는 저희가 안내하지 않습니다."
+# "언제 거절할지"는 아래 규칙(코드)이 정합니다. 직원이 바꿀 수 없습니다.
+# "뭐라고 말할지"는 문서(faq_docs)에서 읽습니다. 직원이 바꿀 수 있습니다.
+#   900번 안내문 · 모를 때 / 910번 안내문 · 실기 질문
+# 문서를 못 읽으면 아래 기본 문구를 씁니다.
 
-ANSWER_UNKNOWN = (
+DEFAULT_PRACTICAL = "저희는 필기 접수만 도와드립니다. 실기는 저희가 안내하지 않습니다."
+
+DEFAULT_UNKNOWN = (
     "모르겠습니다. 저희가 확인하지 못한 내용이라 알려드릴 수 없습니다.\n"
     "짐작해서 말씀드리면 잘못 안내될 수 있어 답을 드리지 않습니다."
 )
+
+NOTICE_UNKNOWN   = "안내문 · 모를 때"
+NOTICE_PRACTICAL = "안내문 · 실기 질문"
+
+
+def notice(docs, title, fallback):
+    for d in docs:
+        if d["title"] == title and d["text"].strip():
+            return d["text"].strip()
+    return fallback
+
+
+def is_notice(d):
+    return d["title"] in (NOTICE_UNKNOWN, NOTICE_PRACTICAL)
 
 # 02_안내규정.md 9절 — 발주처가 확인하지 못한 8가지.
 # 이 조합으로 물으시면 무조건 모른다고 답합니다.
@@ -95,23 +113,25 @@ def has_any(text, words):
     return any(w in text for w in words)
 
 
-def fixed_answer(question):
-    """검색하기 전에 정해진 답이 있는지 봅니다."""
+def fixed_answer(question, docs):
+    """검색하기 전에 정해진 답이 있는지 봅니다. 문구는 문서에서 읽습니다."""
     q = question.replace(" ", "")
+    unknown   = notice(docs, NOTICE_UNKNOWN, DEFAULT_UNKNOWN)
+    practical = notice(docs, NOTICE_PRACTICAL, DEFAULT_PRACTICAL)
 
     # 1) 실기
     if has_any(q, PRACTICAL_WORDS):
-        return ANSWER_PRACTICAL, "실기 질문"
+        return practical, "실기 질문"
 
     # 2) 확인 못 한 8가지
     for subjects, topics, label in UNKNOWN_RULES:
         if has_any(q, subjects) and has_any(q, topics):
-            return ANSWER_UNKNOWN, "확인 못 한 항목: " + label
+            return unknown, "확인 못 한 항목: " + label
 
     # 3) 답할 수 없는 질문
     for group in CANNOT_ANSWER:
         if has_any(q, group):
-            return ANSWER_UNKNOWN, "저희 소관이 아닌 질문"
+            return unknown, "저희 소관이 아닌 질문"
 
     return None, None
 
@@ -166,7 +186,7 @@ def load_docs():
 
 
 def search(question):
-    faqs = load_docs()
+    faqs = [d for d in load_docs() if not is_notice(d)]   # 안내문은 근거에서 제외
     q = tokens(question)
 
     ranked = []
@@ -263,15 +283,17 @@ def answer(question):
     if question == "":
         return "궁금하신 것을 적어 주십시오.", ""
 
-    # 1~3) 정해진 답
-    fixed, why = fixed_answer(question)
+    docs = load_docs()
+
+    # 1~3) 정해진 답 (거절 문구는 문서에서 읽습니다)
+    fixed, why = fixed_answer(question, docs)
     if fixed:
         return fixed, why
 
     # 4~5) 검색
     found = search(question)
     if not found:
-        return ANSWER_UNKNOWN, "문서에서 근거를 찾지 못함"
+        return notice(docs, NOTICE_UNKNOWN, DEFAULT_UNKNOWN), "문서에서 근거를 찾지 못함"
 
     context = "\n\n".join(f"- {f['title']}\n{f['text']}" for _, f in found)
     source = " / ".join(f["title"] for _, f in found)
