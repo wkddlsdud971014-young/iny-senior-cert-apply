@@ -42,6 +42,12 @@
   #msg { font-size: 19px; font-weight: bold; }
   .scroll { overflow-x: auto; }
 
+  /* 화면 사이를 오가는 탭 */
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tabs a { font-size: 17px; color: #333; text-decoration: none;
+            border: 2px solid #767676; padding: 10px 16px; }
+  .tabs a.on { color: #fff; background: #000; border-color: #000; font-weight: bold; }
+
   /* 비밀번호 화면 */
   #lock { max-width: 420px; margin: 60px auto; border: 4px solid #000; padding: 28px; }
   #lock h1 { font-size: 26px; margin: 0 0 8px; }
@@ -75,9 +81,11 @@
 </div>
 
 <div class="wrap" id="main" hidden>
-  <p style="text-align:right;margin:0 0 8px;">
-    <a href="../index.html" style="font-size:16px;color:#333;">← 접수 화면</a>
-  </p>
+  <div class="tabs">
+    <a href="index.html" class="on">우리 접수</a>
+    <a href="integrated.html">통합 내역</a>
+    <a href="../index.html">← 접수 화면</a>
+  </div>
 
   <h1>접수 내역</h1>
   <p class="sub">두두자격지원센터 · 시각은 모두 한국 시간입니다</p>

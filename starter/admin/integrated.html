@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>통합 접수 내역 · 두두자격지원센터</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, "Apple SD Gothic Neo", sans-serif;
+         font-size: 17px; line-height: 1.6; color: #000; background: #fff;
+         margin: 0; padding: 24px 16px 80px; }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+  h1 { font-size: 28px; margin: 0 0 4px; }
+  h2 { font-size: 21px; margin: 34px 0 10px; }
+  .sub { margin: 0 0 20px; color: #333; }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .tabs a { font-size: 17px; color: #333; text-decoration: none;
+            border: 2px solid #767676; padding: 10px 16px; }
+  .tabs a.on { color: #fff; background: #000; border-color: #000; font-weight: bold; }
+
+  .counts { display: flex; gap: 10px; flex-wrap: wrap; }
+  .box { border: 4px solid #000; padding: 14px 20px; min-width: 150px; }
+  .box .label { font-size: 16px; }
+  .box .num { font-size: 38px; font-weight: bold; display: block; }
+
+  table { border-collapse: collapse; width: 100%; margin-top: 6px; }
+  th, td { border: 2px solid #000; padding: 8px 10px; text-align: left; white-space: nowrap; }
+  th { background: #eee; font-size: 16px; }
+  td { font-size: 16px; }
+  td.num, th.num { text-align: right; }
+  tr.total td { font-weight: bold; background: #eee; }
+  .orig { color: #555; font-size: 14px; }
+  .blank { color: #767676; }
+
+  .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 12px 0; }
+  input[type=text], select {
+    font-family: inherit; font-size: 17px; padding: 10px 12px; min-height: 48px;
+    border: 3px solid #000; background: #fff; }
+  button { font-family: inherit; font-size: 17px; font-weight: bold;
+           padding: 10px 18px; min-height: 48px; color: #fff; background: #000;
+           border: 3px solid #000; cursor: pointer; }
+  button.ghost { color: #000; background: #fff; }
+  button:disabled { background: #767676; border-color: #767676; }
+  label.chk { font-size: 17px; display: inline-flex; align-items: center; gap: 6px; }
+  label.chk input { width: 22px; height: 22px; }
+
+  .scroll { overflow-x: auto; }
+  #msg { font-size: 18px; font-weight: bold; }
+
+  #lock { max-width: 420px; margin: 60px auto; border: 4px solid #000; padding: 28px; }
+  #lock h1 { font-size: 24px; }
+  #lock input { width: 100%; font-size: 22px; letter-spacing: 6px; padding: 14px;
+                min-height: 58px; border: 3px solid #000; text-align: center; }
+  #lock button { width: 100%; margin-top: 16px; }
+  #lock .err { border: 3px solid #000; padding: 12px; margin-top: 16px; font-weight: bold; }
+</style>
+</head>
+
+<body>
+
+<div id="lock">
+  <h1>직원용 화면입니다</h1>
+  <p>비밀번호를 넣어 주십시오.</p>
+  <form id="lock-form">
+    <input id="pw" type="password" inputmode="numeric" autocomplete="off" maxlength="8">
+    <button type="submit">들어가기</button>
+  </form>
+  <p class="err" id="lock-err" hidden>비밀번호가 맞지 않습니다.</p>
+  <p><a href="../index.html">← 접수 화면으로 돌아가기</a></p>
+</div>
+
+<div class="wrap" id="main" hidden>
+
+  <h1>통합 접수 내역</h1>
+  <p class="sub">두두넷 국가기술 · 두두넷 전문 · 두두보건 세 곳의 접수를 한 표로 합친 것입니다</p>
+
+  <div class="tabs">
+    <a href="index.html">우리 접수</a>
+    <a href="integrated.html" class="on">통합 내역</a>
+    <a href="../index.html">← 접수 화면</a>
+  </div>
+
+  <p id="msg">불러오는 중입니다...</p>
+
+  <div class="counts" id="counts"></div>
+
+  <h2>자격증별 · 출처별</h2>
+  <div class="scroll"><table id="cross"></table></div>
+
+  <h2>결제상태 · 감면유형 · 사용맥락</h2>
+  <div class="scroll" style="display:flex;gap:20px;flex-wrap:wrap;">
+    <table id="t-pay" style="width:auto;"></table>
+    <table id="t-dis" style="width:auto;"></table>
+    <table id="t-use" style="width:auto;"></table>
+  </div>
+
+  <h2>접수 목록</h2>
+  <div class="bar">
+    <input type="text" id="q" placeholder="이름 · 접수번호 검색">
+    <select id="f-src"><option value="">출처 전체</option></select>
+    <select id="f-cert"><option value="">자격증 전체</option></select>
+    <button id="btn-find">찾기</button>
+    <button class="ghost" id="btn-reset">지우기</button>
+    <label class="chk"><input type="checkbox" id="show-orig"> 원본 값도 보기</label>
+  </div>
+  <p id="list-info"></p>
+  <div class="scroll"><table id="list"></table></div>
+  <div class="bar">
+    <button class="ghost" id="prev">← 이전</button>
+    <span id="page-info"></span>
+    <button class="ghost" id="next">다음 →</button>
+  </div>
+
+</div>
+
+<script>
+const ADMIN_PW = "0000", KEY = "admin-ok";
+const lock = document.getElementById("lock"), main = document.getElementById("main");
+function unlock(){ lock.hidden = true; main.hidden = false; if (window.startPage) window.startPage(); }
+if (sessionStorage.getItem(KEY) === "1") unlock(); else document.getElementById("pw").focus();
+document.getElementById("lock-form").addEventListener("submit", function(e){
+  e.preventDefault();
+  const pw = document.getElementById("pw");
+  if (pw.value === ADMIN_PW) { sessionStorage.setItem(KEY,"1"); unlock(); }
+  else { document.getElementById("lock-err").hidden = false; pw.value = ""; pw.focus(); }
+});
+</script>
+
+<script src="../config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// =============================================================
+// 통합 접수 내역
+//
+// 표준 칸을 기준으로 세고, "원본 값도 보기"를 켜면 원본 칸을 함께 보여줍니다.
+// 빈 칸은 "없음"이 아니라 "-" 로 표시합니다. 없는 것과 0은 다릅니다.
+// =============================================================
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const PER = 50;
+let ALL = [], VIEW = [], page = 1;
+
+const $ = id => document.getElementById(id);
+const esc = v => String(v == null ? "" : v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const cell = v => (v == null || String(v).trim() === "") ? '<span class="blank">-</span>' : esc(v);
+
+async function load() {
+  const { data, error } = await db
+    .from("integrated_applications")
+    .select("*")
+    .order("id", { ascending: true })
+    .limit(2000);
+  if (error) { $("msg").textContent = "불러오지 못했습니다. (" + error.message + ")"; return; }
+  ALL = data; VIEW = data;
+  $("msg").textContent = "";
+  drawCounts(); drawCross(); drawSmall(); fillFilters(); drawList();
+}
+
+function count(rows, col) {
+  const m = {};
+  rows.forEach(r => { const k = (r[col] || "").trim() || "(빈 칸)"; m[k] = (m[k]||0)+1; });
+  return m;
+}
+
+function drawCounts() {
+  const by = count(ALL, "출처");
+  const won = ALL.reduce((s,r) => s + (parseInt(r["최종결제금액"],10) || 0), 0);
+  $("counts").innerHTML =
+    box("전체 접수", ALL.length.toLocaleString() + "건") +
+    ["국가기술","전문","두두보건"].map(k => box(k, (by[k]||0).toLocaleString() + "건")).join("") +
+    box("결제 금액 합계", won.toLocaleString() + "원");
+}
+const box = (label, num) => `<div class="box"><span class="label">${label}</span><span class="num">${num}</span></div>`;
+
+function drawCross() {
+  const srcs = ["국가기술","전문","두두보건"];
+  const certs = [...new Set(ALL.map(r => r["자격증"]))].sort();
+  let h = "<tr><th>자격증</th>" + srcs.map(s=>`<th class="num">${s}</th>`).join("") + '<th class="num">합계</th></tr>';
+  certs.forEach(c => {
+    const row = srcs.map(s => ALL.filter(r => r["자격증"]===c && r["출처"]===s).length);
+    const sum = row.reduce((a,b)=>a+b,0);
+    h += `<tr><td>${esc(c)}</td>` + row.map(n=>`<td class="num">${n||'<span class="blank">-</span>'}</td>`).join("") + `<td class="num"><b>${sum}</b></td></tr>`;
+  });
+  const tot = srcs.map(s => ALL.filter(r => r["출처"]===s).length);
+  h += `<tr class="total"><td>합계</td>` + tot.map(n=>`<td class="num">${n}</td>`).join("") + `<td class="num">${ALL.length}</td></tr>`;
+  $("cross").innerHTML = h;
+}
+
+function drawSmall() {
+  const mk = (title, col) => {
+    const m = count(ALL, col);
+    const keys = Object.keys(m).sort((a,b)=>m[b]-m[a]);
+    return `<tr><th>${title}</th><th class="num">건수</th></tr>` +
+      keys.map(k=>`<tr><td>${esc(k)}</td><td class="num">${m[k]}</td></tr>`).join("");
+  };
+  $("t-pay").innerHTML = mk("결제상태","결제상태");
+  $("t-dis").innerHTML = mk("감면유형","감면유형");
+  $("t-use").innerHTML = mk("사용맥락","사용맥락");
+}
+
+function fillFilters() {
+  const add = (sel, vals) => vals.forEach(v => {
+    const o = document.createElement("option"); o.value = v; o.textContent = v; $(sel).appendChild(o);
+  });
+  add("f-src", ["국가기술","전문","두두보건"]);
+  add("f-cert", [...new Set(ALL.map(r=>r["자격증"]))].sort());
+}
+
+function applyFilter() {
+  const q = $("q").value.trim();
+  const s = $("f-src").value, c = $("f-cert").value;
+  VIEW = ALL.filter(r =>
+    (!s || r["출처"] === s) &&
+    (!c || r["자격증"] === c) &&
+    (!q || (r["성명"]||"").includes(q) || (r["접수번호"]||"").includes(q))
+  );
+  page = 1; drawList();
+}
+
+function drawList() {
+  const showOrig = $("show-orig").checked;
+  const total = VIEW.length, pages = Math.max(1, Math.ceil(total/PER));
+  if (page > pages) page = pages;
+  const rows = VIEW.slice((page-1)*PER, page*PER);
+
+  $("list-info").textContent = `${total.toLocaleString()}건 중 ${rows.length}건 표시`;
+  $("page-info").textContent = `${page} / ${pages} 쪽`;
+  $("prev").disabled = page <= 1; $("next").disabled = page >= pages;
+
+  const cols = showOrig
+    ? [["출처","출처"],["접수번호","접수번호"],["성명","성명"],
+       ["생년월일","생년월일","생년월일_원본"],["성별","성별","성별_원본"],
+       ["연락처","연락처","연락처_원본"],["자격증","자격증"],
+       ["시험지역","시험지역"],["시험일자","시험일자","시험일자_원본"],
+       ["결제수단","결제수단","결제수단_원본"],["결제상태","결제상태","결제상태_원본"],
+       ["접수상태","접수상태","접수상태_원본"],["접수일시","접수일시","접수일시_원본"]]
+    : [["출처","출처"],["접수번호","접수번호"],["성명","성명"],["생년월일","생년월일"],
+       ["성별","성별"],["연락처","연락처"],["자격증","자격증"],["시험지역","시험지역"],
+       ["시험일자","시험일자"],["결제수단","결제수단"],["결제상태","결제상태"],
+       ["접수상태","접수상태"],["접수일시","접수일시"]];
+
+  let h = "<tr>" + cols.map(c=>`<th>${c[0]}</th>`).join("") + "</tr>";
+  rows.forEach(r => {
+    h += "<tr>" + cols.map(c => {
+      let v = cell(r[c[1]]);
+      if (c[2] && (r[c[2]]||"").trim() !== "" && r[c[2]] !== r[c[1]])
+        v += `<br><span class="orig">원본 ${esc(r[c[2]])}</span>`;
+      return `<td>${v}</td>`;
+    }).join("") + "</tr>";
+  });
+  $("list").innerHTML = h;
+}
+
+$("btn-find").addEventListener("click", applyFilter);
+$("q").addEventListener("keydown", e => { if (e.key === "Enter") applyFilter(); });
+$("f-src").addEventListener("change", applyFilter);
+$("f-cert").addEventListener("change", applyFilter);
+$("btn-reset").addEventListener("click", () => { $("q").value=""; $("f-src").value=""; $("f-cert").value=""; applyFilter(); });
+$("show-orig").addEventListener("change", drawList);
+$("prev").addEventListener("click", () => { if (page>1){ page--; drawList(); window.scrollTo(0,document.getElementById("list").offsetTop-80);} });
+$("next").addEventListener("click", () => { page++; drawList(); window.scrollTo(0,document.getElementById("list").offsetTop-80); });
+
+window.startPage = load;
+if (!main.hidden) load();
+</script>
+</body>
+</html>
