@@ -234,6 +234,7 @@ git log -p --all -S 'SUPABASE_SERVICE' | head
 | D | 접수 어드민 `admin/` | ⬜ |
 | E | 챗봇 `app.py` | ⬜ |
 | F | FAQ 어드민 `faq-admin/` | ⬜ |
-| G | 배포 (공개 주소 3개) | ⬜ |
+| G | 배포 (공개 주소 3개) | ✅ https://iny-senior-cert-apply.vercel.app |
+| DB통합 | CSV 3종 → `integrate/통합_접수_1000.csv` | ✅ 1,000행 / 검증 7종 통과 |
 
 **17:00 이후에는 새 기능을 만들지 않습니다.** 테스트와 기록만 합니다.
