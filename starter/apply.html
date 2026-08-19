@@ -55,13 +55,15 @@
 
     <div class="field" id="f-name">
       <label for="name">이름</label>
-      <input id="name" type="text" autocomplete="name">
+      <input id="name" type="text" autocomplete="name" maxlength="30">
+      <p class="err" id="e-name" hidden></p>
       <p class="help">다 넣으시면 <b>엔터</b>를 누르십시오</p>
     </div>
 
     <div class="field" id="f-phone">
       <label for="phone">연락처</label>
       <input id="phone" type="tel" autocomplete="tel">
+      <p class="err" id="e-phone" hidden></p>
     </div>
 
     <div class="field" id="f-note">

@@ -117,6 +117,46 @@ function updateNext() {
 }
 
 
+// ----- 입력 검사 -----
+// 화면에서만 봅니다. DB 에는 제약을 걸지 않습니다.
+// 원본 데이터를 거부하지 않는다는 원칙은 그대로입니다.
+
+function checkName(v) {
+  const t = (v || "").trim();
+  if (t === "")        return "이름을 넣어 주십시오.";
+  if (t.length < 2)    return "이름을 두 글자 이상 넣어 주십시오.";
+  if (t.length > 30)   return "이름이 너무 깁니다. 30자 안으로 넣어 주십시오.";
+  // 한글(완성된 글자)과 영문, 띄어쓰기만 받습니다.
+  // "ㅎ" 같은 자음 하나, 숫자, 기호는 이름이 아닙니다.
+  if (!/^[가-힣a-zA-Z\s]+$/.test(t))
+    return "이름에는 한글이나 영문만 넣어 주십시오. 숫자나 기호는 넣지 마십시오.";
+  return "";
+}
+
+function checkPhone(v) {
+  const d = (v || "").replace(/[^0-9]/g, "");
+  if (d === "")                       return "연락처를 넣어 주십시오.";
+  if (!d.startsWith("0"))             return "연락처는 0으로 시작해야 합니다. 다시 확인해 주십시오.";
+  if (d.length < 10 || d.length > 11) return "연락처 자릿수가 맞지 않습니다. 숫자 10자리나 11자리로 넣어 주십시오.";
+  if (/^(\d)\1+$/.test(d))            return "연락처를 다시 확인해 주십시오.";
+  return "";
+}
+
+// 칸 바로 아래에 안내를 띄웁니다.
+function showFieldError(fieldId, errId, box, text) {
+  const f = document.getElementById(fieldId);
+  const e = document.getElementById(errId);
+  if (!e) return;
+  if (text) {
+    e.textContent = text; e.hidden = false; f.classList.add("bad");
+    box.focus({ preventScroll: true });
+    f.scrollIntoView({ behavior: "smooth", block: "center" });
+  } else {
+    e.hidden = true; f.classList.remove("bad");
+  }
+}
+
+
 // ----- 4. 안내 문구 -----
 
 function showMessage(text) { msgBox.textContent = text; msgBox.className = "warn"; }
@@ -132,11 +172,13 @@ form.addEventListener("submit", async function (event) {
   clearMessage();
 
   // 화면에서 안내만 합니다. DB에는 이런 제약을 걸지 않았습니다.
-  if (nameBox.value.trim() === "") {
-    showMessage("이름을 넣어 주십시오.");
-    nameBox.focus();
-    return;
-  }
+  const nameErr = checkName(nameBox.value);
+  if (nameErr) { showFieldError("f-name", "e-name", nameBox, nameErr); return; }
+  showFieldError("f-name", "e-name", nameBox, "");
+
+  const phoneErr = checkPhone(phoneBox.value);
+  if (phoneErr) { showFieldError("f-phone", "e-phone", phoneBox, phoneErr); return; }
+  showFieldError("f-phone", "e-phone", phoneBox, "");
   if (agP && !agP.checked) {
     showMessage("개인정보 수집 · 이용에 동의해 주십시오.");
     agP.focus();
@@ -249,7 +291,10 @@ function isTypingHangul(e) {
 nameBox.addEventListener("keydown", function (e) {
   if (e.key !== "Enter" || isTypingHangul(e)) return;
   e.preventDefault();
-  if (nameBox.value.trim() !== "") goTo(phoneBox);
+  const err = checkName(nameBox.value);
+  if (err) { showFieldError("f-name", "e-name", nameBox, err); return; }
+  showFieldError("f-name", "e-name", nameBox, "");
+  goTo(phoneBox);
 });
 
 // 연락처 칸에서 엔터 → 동의로
@@ -260,7 +305,17 @@ phoneBox.addEventListener("keydown", function (e) {
 });
 
 phoneBox.addEventListener("input", function () {
-  phoneBox.value = hyphenPhone(phoneBox.value);
+  const before = phoneBox.value;
+  phoneBox.value = hyphenPhone(before);
+
+  // 숫자가 아닌 글자를 넣으시면 왜 안 써지는지 알려 드립니다.
+  // 그냥 지워 버리면 "왜 안 되지?" 하고 헤매십니다.
+  if (/[^0-9\-\s]/.test(before)) {
+    showFieldError("f-phone", "e-phone", phoneBox, "연락처에는 숫자만 넣어 주십시오.");
+  } else {
+    document.getElementById("e-phone").hidden = true;
+    document.getElementById("f-phone").classList.remove("bad");
+  }
 
   // 번호를 다 넣으시면(11자리) 저절로 동의 칸으로 넘어갑니다.
   const digits = phoneBox.value.replace(/[^0-9]/g, "");
@@ -275,6 +330,10 @@ if (agP) agP.addEventListener("change", function () {
 if (agT) agT.addEventListener("change", function () {
   if (agT.checked && agP && agP.checked) setTimeout(function () { goTo(sendBtn); }, 150);
 });
+nameBox.addEventListener("input", function () {
+  if (!checkName(nameBox.value)) showFieldError("f-name", "e-name", nameBox, "");
+});
+
 [nameBox, phoneBox, noteBox].forEach(function (el) {
   el.addEventListener("input", updateNext);
   el.addEventListener("focus", updateNext);

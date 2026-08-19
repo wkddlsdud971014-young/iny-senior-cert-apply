@@ -729,3 +729,15 @@ body.focus-mode .cert-zone.open { background: var(--card); }
   #done .num { color: #000; }
   .done-next { background: #fff; border: 1px solid #000; }
 }
+
+
+/* ---------- 칸 바로 아래 안내 ----------
+   버튼 옆 한 곳에만 안내를 띄우면 화면 아래라 못 보십니다.
+   잘못된 칸 바로 밑에 띄워야 어디가 문제인지 바로 아십니다. */
+.err {
+  background: var(--accent-pale); border: 2px solid var(--accent);
+  border-radius: 12px; padding: 12px 16px; margin: 10px 0 0;
+  font-size: 18px; font-weight: 700; color: var(--ink);
+}
+.err[hidden] { display: none; }
+.field.bad input, .field.bad textarea { border-color: var(--accent); }
