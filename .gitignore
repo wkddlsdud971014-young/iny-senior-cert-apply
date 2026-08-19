@@ -1,10 +1,6 @@
-# --- 수업 자료 (산출물 아님, 저장소에 포함하지 않음) ---
-MP1_guide&write/
-MP1_실습가이드.md
+# --- 수업 자료 (산출물 아님) ---
+course/
 MP1_수행일지.md
-
-# --- client-docs와 내용이 동일한 중복 폴더 ---
-client-docs-원본/
 
 # --- OS ---
 .DS_Store
