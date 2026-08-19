@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>접수 내역 · 두두자격지원센터</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, "Apple SD Gothic Neo", sans-serif;
+    font-size: 18px; line-height: 1.6; color: #000; background: #fff;
+    margin: 0; padding: 24px 16px 80px;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 30px; margin: 0 0 4px; }
+  h2 { font-size: 22px; margin: 36px 0 12px; }
+  .sub { margin: 0 0 24px; color: #333; }
+
+  /* 오늘 몇 건 — 발주처 문제 12번 "눈으로 셈, 자주 틀림" */
+  .counts { display: flex; gap: 12px; flex-wrap: wrap; }
+  .count-box { border: 4px solid #000; padding: 16px 24px; min-width: 160px; }
+  .count-box .label { font-size: 17px; }
+  .count-box .num { font-size: 44px; font-weight: bold; display: block; }
+  .count-box.warn { border-style: dashed; }
+
+  button.reload {
+    font-family: inherit; font-size: 19px; font-weight: bold;
+    padding: 14px 24px; min-height: 56px; margin-top: 20px;
+    color: #fff; background: #000; border: 3px solid #000; cursor: pointer;
+  }
+  button.reload:disabled { background: #767676; border-color: #767676; }
+
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+  th, td { border: 2px solid #000; padding: 10px 12px; text-align: left; vertical-align: top; }
+  th { background: #eee; font-size: 17px; white-space: nowrap; }
+  td { font-size: 18px; }
+  tr.check td { background: #f2f2f2; }
+
+  .tag { display: inline-block; border: 2px solid #000; padding: 1px 8px; font-size: 15px; font-weight: bold; }
+  .muted { color: #555; font-size: 15px; }
+  .empty { border: 3px solid #000; padding: 24px; text-align: center; font-size: 20px; }
+  #msg { font-size: 19px; font-weight: bold; }
+  .scroll { overflow-x: auto; }
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <h1>접수 내역</h1>
+  <p class="sub">두두자격지원센터 · 시각은 모두 한국 시간입니다</p>
+
+  <div class="counts">
+    <div class="count-box">
+      <span class="label">오늘 접수</span>
+      <span class="num" id="cnt-today">-</span>
+    </div>
+    <div class="count-box">
+      <span class="label">전체 접수</span>
+      <span class="num" id="cnt-all">-</span>
+    </div>
+    <div class="count-box warn">
+      <span class="label">확인 필요</span>
+      <span class="num" id="cnt-check">-</span>
+    </div>
+  </div>
+
+  <button class="reload" id="reload-btn">새로 불러오기</button>
+  <p id="msg"></p>
+
+  <h2>자격증별 건수</h2>
+  <div class="scroll"><table id="by-cert"></table></div>
+
+  <h2>접수 목록</h2>
+  <div class="scroll"><div id="list"></div></div>
+
+</div>
+
+<script src="../config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// =============================================================
+// 접수 어드민
+//
+// 1) Supabase는 시각을 세계표준시(UTC)로 저장합니다.
+//    한국 시간(KST)은 UTC보다 9시간 빠릅니다.
+//    그대로 보여주면 새벽 9시 이전 접수가 '어제'로 보입니다.
+//    → 화면에 뿌릴 때 Asia/Seoul 기준으로 바꿉니다.
+//
+// 2) 원본은 그대로 보여주고, 판정 결과는 따로 표시합니다.
+//    연락처는 원본을 그대로 저장해 두고, 화면에는 하이픈을 붙여 보여줍니다.
+// =============================================================
+
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const KST = "Asia/Seoul";
+
+// ----- 연락처 하이픈 붙이기 -----
+// 숫자만 넣으셔도 010-1234-5678 모양으로 보이게 합니다.
+// 전화번호 모양이 아니면(자릿수가 안 맞으면) 손대지 않고 그대로 둡니다.
+function hyphenPhone(value) {
+  const d = String(value == null ? "" : value).replace(/[^0-9]/g, "");
+  if (d.startsWith("02")) {
+    if (d.length <= 2)  return d;
+    if (d.length <= 5)  return d.slice(0, 2) + "-" + d.slice(2);
+    if (d.length <= 9)  return d.slice(0, 2) + "-" + d.slice(2, 5) + "-" + d.slice(5);
+    return d.slice(0, 2) + "-" + d.slice(2, 6) + "-" + d.slice(6, 10);
+  }
+  if (d.length <= 3)  return d;
+  if (d.length <= 7)  return d.slice(0, 3) + "-" + d.slice(3);
+  if (d.length <= 10) return d.slice(0, 3) + "-" + d.slice(3, 6) + "-" + d.slice(6);
+  return d.slice(0, 3) + "-" + d.slice(3, 7) + "-" + d.slice(7, 11);
+}
+
+
+// UTC 문자열 → "2026-08-19" (한국 날짜)
+function kstDate(iso) {
+  return new Date(iso).toLocaleDateString("sv-SE", { timeZone: KST });
+}
+// UTC 문자열 → "2026-08-19 11:11" (한국 시각)
+function kstDateTime(iso) {
+  const d = new Date(iso);
+  const day  = d.toLocaleDateString("sv-SE", { timeZone: KST });
+  const time = d.toLocaleTimeString("ko-KR",
+    { timeZone: KST, hour: "2-digit", minute: "2-digit", hour12: false });
+  return day + " " + time;
+}
+// 지금 한국 날짜
+function todayKST() {
+  return new Date().toLocaleDateString("sv-SE", { timeZone: KST });
+}
+
+const btn = document.getElementById("reload-btn");
+const msg = document.getElementById("msg");
+
+async function load() {
+  btn.disabled = true;
+  msg.textContent = "불러오는 중입니다...";
+
+  const { data, error } = await db
+    .from("applications")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  btn.disabled = false;
+
+  if (error) {
+    msg.textContent = "불러오지 못했습니다. (" + error.message + ")";
+    return;
+  }
+  msg.textContent = "";
+  draw(data);
+}
+
+function draw(rows) {
+  const today = todayKST();
+
+  // ----- 숫자 세 개 -----
+  document.getElementById("cnt-all").textContent   = rows.length;
+  document.getElementById("cnt-today").textContent = rows.filter(r => kstDate(r.created_at) === today).length;
+  document.getElementById("cnt-check").textContent = rows.filter(r => r.review_needed).length;
+
+  // ----- 자격증별 건수 (판정 컬럼 certificate_std 기준) -----
+  const byCert = {};
+  rows.forEach(function (r) {
+    const key = r.certificate_std || "확인 필요";
+    byCert[key] = (byCert[key] || 0) + 1;
+  });
+  const certTable = document.getElementById("by-cert");
+  const sorted = Object.keys(byCert).sort((a, b) => byCert[b] - byCert[a]);
+  certTable.innerHTML =
+    "<tr><th>자격증</th><th>건수</th></tr>" +
+    (sorted.length
+      ? sorted.map(k => "<tr><td>" + esc(k) + "</td><td>" + byCert[k] + "건</td></tr>").join("")
+      : "<tr><td colspan='2'>아직 없습니다</td></tr>");
+
+  // ----- 접수 목록 -----
+  const list = document.getElementById("list");
+  if (rows.length === 0) {
+    list.innerHTML = "<p class='empty'>아직 접수된 신청이 없습니다.</p>";
+    return;
+  }
+
+  list.innerHTML =
+    "<table><tr>" +
+    "<th>접수번호</th><th>접수일시 (한국)</th><th>이름</th>" +
+    "<th>연락처</th><th>신청 자격증</th><th>경로</th><th>비고</th><th>확인</th>" +
+    "</tr>" +
+    rows.map(function (r) {
+      // 저장된 원본(r.phone)은 그대로 두고, 보여줄 때만 하이픈을 붙입니다.
+      // 판정 컬럼 phone_digits(숫자만)를 써서 모양을 맞춥니다.
+      // 전화번호 자릿수(9~11)가 아니면 원본을 그대로 보여줍니다.
+      const dg = r.phone_digits || "";
+      const phone = (dg.length >= 9 && dg.length <= 11)
+        ? esc(hyphenPhone(dg))
+        : (r.phone && r.phone.trim() !== "" ? esc(r.phone) : "<span class='muted'>없음</span>");
+
+      const cert = esc(r.certificate || "") +
+        (r.certificate_std ? "" : "<br><span class='muted'>표준명 판정 안 됨</span>");
+
+      return "<tr class='" + (r.review_needed ? "check" : "") + "'>" +
+        "<td>" + r.id + "</td>" +
+        "<td>" + kstDateTime(r.created_at) + "</td>" +
+        "<td>" + (r.name && r.name.trim() !== "" ? esc(r.name) : "<span class='muted'>없음</span>") + "</td>" +
+        "<td>" + phone + "</td>" +
+        "<td>" + cert + "</td>" +
+        "<td>" + esc(r.channel || "") + "</td>" +
+        "<td>" + esc(r.note || "") + "</td>" +
+        "<td>" + (r.review_needed ? "<span class='tag'>확인 필요</span>" : "") + "</td>" +
+        "</tr>";
+    }).join("") +
+    "</table>";
+}
+
+function esc(v) {
+  return String(v === null || v === undefined ? "" : v)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+btn.addEventListener("click", load);
+load();
+</script>
+</body>
+</html>
