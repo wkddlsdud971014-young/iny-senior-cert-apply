@@ -770,10 +770,15 @@ body.focus-mode .cert-zone.open { background: var(--card); }
   .card { padding: 0 16px 18px; border-radius: 16px; }
   .card h2 { margin: 0 -16px 18px; padding: 15px 16px; font-size: 20px; }
 
-  /* 고르신 자격증 — '바꾸기' 단추가 겹치지 않게 아래로 */
-  .summary { padding: 16px 18px; }
-  .summary .change { position: static; display: inline-block; margin-top: 12px; }
-  .summary .cert { font-size: 21px; }
+  /* 고르신 자격증 — '바꾸기' 단추가 이름을 가려서 아래로 내립니다 */
+  .summary { padding: 16px 18px !important; position: static; }
+  .summary .change {
+    position: static !important; display: inline-block; margin-top: 14px;
+    font-size: 15px; padding: 8px 14px;
+  }
+  .summary .cert { font-size: 20px; line-height: 1.35; }
+  .summary .sub { font-size: 15px; }
+  .summary .note { font-size: 15px; }
 
   /* 단계 안내 표가 글자를 가리지 않게 */
   .next-up::before { font-size: 13px; padding: 2px 10px; top: -12px; right: 8px; }
@@ -820,4 +825,42 @@ body.focus-mode .cert-zone.open { background: var(--card); }
                gap: 14px; text-align: left; padding: 14px 16px; }
   .cert-link .ico { margin: 0; flex: 0 0 40px; }
   .cert-link .nm { font-size: 18px; }
+}
+
+
+/* ---------- 「물어보기」 단추가 글자를 가리지 않게 ---------- */
+/* 휴대폰에서는 단추를 작게 하고, 페이지 아래에 여백을 둡니다. */
+@media (max-width: 720px) {
+  body { padding-bottom: 96px; }
+  .float-chat {
+    right: 12px; bottom: 12px; padding: 0; font-size: 0;
+    width: 58px; height: 58px; min-height: 58px; border-radius: 50%;
+    justify-content: center; box-shadow: 0 4px 14px rgba(190,84,39,.4);
+  }
+  .float-chat::before { content: "💬"; font-size: 25px; }
+}
+
+
+/* ---------- 휴대폰에서 겹치거나 삐져나가던 곳 ---------- */
+@media (max-width: 720px) {
+  /* 긴 낱말이 칸을 넘지 않게 */
+  body { word-break: keep-all; overflow-wrap: break-word; }
+  h1, h2, .cert-link .nm, .summary .cert { word-break: keep-all; }
+
+  /* 가로로 밀리지 않게 */
+  html, body { max-width: 100%; overflow-x: hidden; }
+
+  /* 안내 문구가 단추에 가리지 않게 */
+  .err { font-size: 17px; padding: 12px 14px; }
+
+  /* 챗봇 창은 화면 가득 */
+  .chat-box { max-height: 100vh; }
+  .chat-body { padding: 14px; }
+  .chat-in input { font-size: 17px; padding: 12px 14px; min-height: 52px; }
+  .chat-in button { font-size: 17px; padding: 12px 18px; min-height: 52px; }
+  .chat-ex .ex { font-size: 15px; padding: 9px 13px; min-height: 42px; }
+  .msg .bubble { font-size: 17px; padding: 12px 15px; max-width: 88%; }
+
+  /* 직원용 표는 옆으로 밀어 보는 게 맞습니다 */
+  .scroll { -webkit-overflow-scrolling: touch; }
 }

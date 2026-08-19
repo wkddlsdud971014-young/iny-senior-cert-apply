@@ -239,8 +239,10 @@ function applyFilter() {
     if (c && r["자격증"] !== c) return false;
     if (q && !(r["성명"]||"").includes(q) && !(r["접수번호"]||"").includes(q)) return false;
     for (const col in COLF) {
-      const want = COLF[col].trim();
-      if (want && !String(r[col] || "").includes(want)) return false;
+      const want = COLF[col];
+      const has  = String(r[col] || "").trim();
+      if (want === "(빈 칸)") { if (has !== "") return false; }
+      else if (want && has !== want) return false;
     }
     return true;
   });
@@ -269,11 +271,13 @@ function drawList() {
   if ($("show-when").checked) cols.push(["접수일시","접수일시","접수일시_원본"]);
   if (!showOrig) cols = cols.map(c => [c[0], c[1]]);
 
-  // 칸마다 거르는 줄. 직원이 "울산만" "취소만" 처럼 바로 좁혀 볼 수 있게.
-  let h = "<tr>" + cols.map(c=>`<th>${c[0]}</th>`).join("") + "</tr>" +
-    "<tr class='filter-row'>" + cols.map(function (c) {
-      return `<th><input type="text" class="col-f" data-col="${c[1]}" value="${esc(COLF[c[1]] || "")}" placeholder="거르기"></th>`;
-    }).join("") + "</tr>";
+  // 표머리마다 거르기 화살표. 엑셀처럼 눌러서 값을 고릅니다.
+  let h = "<tr>" + cols.map(function (c) {
+    const on = COLF[c[1]] ? " on" : "";
+    return `<th><span class="th-in">${c[0]}` +
+           `<button type="button" class="fbtn${on}" data-col="${c[1]}" title="거르기">▾</button>` +
+           `</span></th>`;
+  }).join("") + "</tr>";
   rows.forEach(r => {
     h += "<tr>" + cols.map(c => {
       // 우리 접수 건의 빈 칸에는 「확인 필요」를 띄웁니다. 누르면 채울 수 있습니다.
@@ -304,19 +308,71 @@ $("btn-reset").addEventListener("click", () => {
   applyFilter();
 });
 
-// 칸마다 거르기 — 글자를 치면 바로 좁혀집니다.
-let colTimer = null;
-$("list").addEventListener("input", function (e) {
-  if (!e.target.classList.contains("col-f")) return;
-  COLF[e.target.dataset.col] = e.target.value;
-  const at = e.target.dataset.col, pos = e.target.selectionStart;
-  clearTimeout(colTimer);
-  colTimer = setTimeout(function () {
-    applyFilter();
-    const again = document.querySelector('.col-f[data-col="' + at + '"]');
-    if (again) { again.focus(); again.setSelectionRange(pos, pos); }
-  }, 250);
+// ---------- 표머리 거르기 ----------
+// 화살표를 누르면 그 칸에 실제로 들어 있는 값들이 나옵니다.
+// 값이 많은 칸(성명·접수번호)은 찾기 칸으로 씁니다.
+
+let fpop = null;
+function closePop() { if (fpop) { fpop.remove(); fpop = null; } }
+
+$("list").addEventListener("click", function (e) {
+  const b = e.target.closest(".fbtn");
+  if (!b) return;
+  e.stopPropagation();
+  const col = b.dataset.col;
+  const was = fpop && fpop.dataset.col === col;
+  closePop();
+  if (was) return;
+
+  // 이 칸에 들어 있는 값 모으기 (지금 걸린 다른 조건은 무시하고 전체 기준)
+  const m = {};
+  ALL.forEach(function (r) {
+    const v = String(r[col] || "").trim() || "(빈 칸)";
+    m[v] = (m[v] || 0) + 1;
+  });
+  const vals = Object.keys(m).sort(function (x, y) { return m[y] - m[x]; });
+
+  fpop = document.createElement("div");
+  fpop.className = "fpop";
+  fpop.dataset.col = col;
+  fpop.innerHTML =
+    '<div class="fpop-head">' + col + ' 거르기</div>' +
+    (vals.length > 12 ? '<input type="text" class="fpop-q" placeholder="찾기">' : '') +
+    '<button type="button" class="fpop-all">전체 보기</button>' +
+    '<div class="fpop-list">' +
+      vals.slice(0, 200).map(function (v) {
+        const sel = COLF[col] === v ? " on" : "";
+        return '<button type="button" class="fpop-v' + sel + '" data-v="' + esc(v) + '">' +
+               '<span>' + esc(v) + '</span><b>' + m[v] + '</b></button>';
+      }).join("") +
+    '</div>';
+
+  const r = b.getBoundingClientRect();
+  fpop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 240)) + "px";
+  fpop.style.top  = (r.bottom + window.scrollY + 4) + "px";
+  document.body.appendChild(fpop);
+
+  const q = fpop.querySelector(".fpop-q");
+  if (q) {
+    q.focus();
+    q.addEventListener("input", function () {
+      const w = q.value.trim();
+      fpop.querySelectorAll(".fpop-v").forEach(function (el) {
+        el.hidden = w !== "" && !el.dataset.v.includes(w);
+      });
+    });
+  }
+
+  fpop.addEventListener("click", function (ev) {
+    ev.stopPropagation();
+    if (ev.target.closest(".fpop-all")) { delete COLF[col]; closePop(); applyFilter(); return; }
+    const v = ev.target.closest(".fpop-v");
+    if (v) { COLF[col] = v.dataset.v; closePop(); applyFilter(); }
+  });
 });
+
+document.addEventListener("click", closePop);
+window.addEventListener("scroll", closePop);
 $("show-orig").addEventListener("change", drawList);
 $("show-when").addEventListener("change", drawList);
 $("prev").addEventListener("click", () => { if (page>1){ page--; drawList(); window.scrollTo(0,document.getElementById("list").offsetTop-80);} });
