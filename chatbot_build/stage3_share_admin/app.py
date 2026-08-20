@@ -14,12 +14,6 @@ MUST 챌린지:
 from __future__ import annotations
 import os
 from pathlib import Path
-import gradio as gr
-from gemini import GeminiClient
-from rag import (
-    answer_question, reload_faq, get_faq_table, add_faq_entry, delete_faq_entry,
-    get_synonyms_table, add_synonym, delete_synonym, reload_synonyms,
-)
 
 
 def load_env():
@@ -32,7 +26,20 @@ def load_env():
             os.environ.setdefault(key.strip(), value.strip())
 
 
+# rag 를 불러오기 전에 .env 를 먼저 읽는다.
+# rag -> store 순으로 불려가는데, store 는 불려가는 순간 os.environ 에서
+# SUPABASE_URL / SUPABASE_KEY 를 읽어 저장 위치를 정한다.
+# import 가 먼저면 .env 를 아직 안 읽은 상태라 항상 "설정 없음"으로 판정돼
+# Supabase 를 넣어도 파일 모드로 떨어진다. 그래서 순서를 바꿨다.
 load_env()
+
+import gradio as gr  # noqa: E402
+from gemini import GeminiClient  # noqa: E402
+from rag import (  # noqa: E402
+    answer_question, reload_faq, get_faq_table, add_faq_entry, delete_faq_entry,
+    get_synonyms_table, add_synonym, delete_synonym, reload_synonyms,
+)
+
 client = GeminiClient()
 
 
