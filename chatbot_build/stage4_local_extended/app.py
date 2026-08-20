@@ -57,4 +57,6 @@ demo = gr.ChatInterface(
 )
 
 if __name__ == "__main__":
-    demo.launch()
+    # 교재 원본은 demo.launch() 로 로컬만 띄운다 (S4·S5는 배포 축이 "로컬").
+    # 온라인에서 확인하려고 share=True 를 켰다. 검색 결과에는 영향이 없다.
+    demo.launch(share=True)
