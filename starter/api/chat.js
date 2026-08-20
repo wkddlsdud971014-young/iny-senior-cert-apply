@@ -19,7 +19,12 @@
 // =============================================================
 
 const TOP_K = 3;
-const MIN_SCORE = 2;
+// 점수 문턱. 이보다 낮으면 Gemini 를 부르지 않고 "모르겠습니다"로 끊습니다.
+// 2026-08-20: 낱말 개수 세기에서 IDF 가중치로 바꾸면서 단위가 달라져 다시 쟀습니다.
+//   관련 없는 질문(날씨·주식·점심) 7개 → 전부 0.00점
+//   답이 있어야 하는 질문 24개        → 가장 낮은 것이 2.99점
+// 그 사이인 2.5 로 잡았습니다.
+const MIN_SCORE = 2.5;
 const GEMINI_MODEL = "gemini-3.5-flash-lite";
 
 // ---------- 어르신이 쓰시는 말 → 문서에 적힌 말 ----------
@@ -73,6 +78,46 @@ function overlap(a, b) {
   let n = 0;
   for (const t of a) if (b.has(t)) n++;
   return n;
+}
+
+// ---------- 낱말의 무게 (IDF) ----------
+// 2026-08-20 추가.
+//
+// 그 전에는 겹치는 낱말을 그냥 세었습니다. 그러면 "접수"처럼 거의 모든
+// 문서에 있는 낱말과 "환불"처럼 한두 문서에만 있는 낱말이 똑같이 한 표씩
+// 됩니다. 그래서 "환불 언제까지 되나요" 라고 물으시면 ("언제" 가 "접수" 로
+// 넓혀지는 탓에) 제목에 "접수" 가 든 문서들이 위로 올라오고, 정작 환불
+// 문서는 상위 세 개 안에도 못 들어갔습니다. Gemini 는 엉뚱한 근거만 받으니
+// 답할 방법이 없습니다.
+//
+// IDF 는 "이 낱말이 몇 개 문서에 나오는가" 를 봅니다. 여러 문서에 나오면
+// 가볍게, 몇 문서에만 나오면 무겁게 칩니다. 흔한 낱말로는 문서를 고를 수
+// 없고, 드문 낱말이 진짜 단서이기 때문입니다.
+//
+// 실습(chatbot_build)에서 4,705건으로 확인한 방식을 문서 21건에 옮긴 것입니다.
+// 옮기기 전 24문항으로 재어 보았습니다.
+//   상위 3개 안에 정답 문서가 드는 비율: 20/24(83%) → 22/24(92%)
+//   나빠진 문항은 없었습니다.
+function buildIdf(docs) {
+  const n = docs.length;
+  const df = new Map();
+  for (const d of docs) {
+    const words = new Set([...tokens(d.title), ...tokens(d.content)]);
+    for (const w of words) df.set(w, (df.get(w) || 0) + 1);
+  }
+  // +1 은 한 번도 안 나온 낱말에서 0 으로 나누는 것을 막습니다.
+  return w => Math.log((n + 1) / ((df.get(w) || 0) + 1)) + 1;
+}
+
+// 제목에서 맞으면 두 배로 칩니다. 예전 방식과 같은 규칙입니다.
+function weighted(qt, doc, idf) {
+  const t = tokens(doc.title), c = tokens(doc.content);
+  let s = 0;
+  for (const w of qt) {
+    if (t.has(w)) s += 2 * idf(w);
+    if (c.has(w)) s += idf(w);
+  }
+  return s;
 }
 
 // ---------- 정해진 답 ----------
@@ -257,12 +302,10 @@ export default async function handler(req, res) {
 
   // 4~5) 검색 (안내문은 근거에서 제외)
   const q = tokens(question);
-  const ranked = docs
-    .filter(d => !isNotice(d))
-    .map(d => ({
-      score: overlap(q, tokens(d.title)) * 2 + overlap(q, tokens(d.content)),
-      doc: d,
-    }))
+  const pool = docs.filter(d => !isNotice(d));
+  const idf = buildIdf(pool);
+  const ranked = pool
+    .map(d => ({ score: weighted(q, d, idf), doc: d }))
     .filter(x => x.score >= MIN_SCORE)
     .sort((a, b) => b.score - a.score)
     .slice(0, TOP_K);

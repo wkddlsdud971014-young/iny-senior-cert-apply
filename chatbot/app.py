@@ -18,7 +18,7 @@
       그래야 지어낼 수가 없습니다. (발주서 12줄 - "이게 가장 중요합니다")
 """
 
-import json, os, re, sys, urllib.request, urllib.error
+import json, math, os, re, sys, urllib.request, urllib.error
 from pathlib import Path
 
 from settings import TOP_K, MIN_SCORE, USE_GEMINI, GEMINI_MODELS
@@ -185,18 +185,49 @@ def load_docs():
     return json.loads(FAQ_PATH.read_text(encoding="utf-8"))
 
 
+def build_idf(faqs):
+    """
+    낱말마다 무게를 매깁니다. (IDF - 2026-08-20 추가)
+
+    그 전에는 겹치는 낱말을 그냥 세었습니다. 그러면 "접수"처럼 거의 모든
+    문서에 있는 낱말과 "환불"처럼 한두 문서에만 있는 낱말이 똑같이 한 표씩
+    됩니다. "환불 언제까지 되나요" 라고 물으시면 ("언제"가 "접수"로 넓혀지는
+    탓에) 제목에 "접수"가 든 문서들이 위로 올라오고, 정작 환불 문서는 상위
+    세 개 안에도 못 들었습니다.
+
+    여러 문서에 나오는 낱말은 가볍게, 몇 문서에만 나오는 낱말은 무겁게 칩니다.
+    흔한 낱말로는 문서를 고를 수 없고, 드문 낱말이 진짜 단서이기 때문입니다.
+
+    api/chat.js 의 buildIdf() 와 같은 식이어야 합니다.
+    """
+    n = len(faqs)
+    df = {}
+    for faq in faqs:
+        for w in tokens(faq["title"]) | tokens(faq["text"]):
+            df[w] = df.get(w, 0) + 1
+    # +1 은 한 번도 안 나온 낱말에서 0 으로 나누는 것을 막습니다.
+    return lambda w: math.log((n + 1) / (df.get(w, 0) + 1)) + 1
+
+
 def search(question):
     faqs = [d for d in load_docs() if not is_notice(d)]   # 안내문은 근거에서 제외
     q = tokens(question)
+    idf = build_idf(faqs)
 
     ranked = []
     for faq in faqs:
         # 제목에 겹치는 낱말은 두 배로 셉니다.
         # "환불 되나요?" 는 본문에 '환불'이 스쳐 지나가는 문서보다
         # 제목이 '환불 규정'인 문서가 먼저 나와야 합니다.
-        in_title = len(q & tokens(faq["title"]))
-        in_text  = len(q & tokens(faq["text"]))
-        ranked.append((in_title * 2 + in_text, faq))
+        title_words = tokens(faq["title"])
+        text_words  = tokens(faq["text"])
+        score = 0.0
+        for w in q:
+            if w in title_words:
+                score += 2 * idf(w)
+            if w in text_words:
+                score += idf(w)
+        ranked.append((score, faq))
 
     ranked.sort(key=lambda x: (-x[0], x[1]["title"]))
     return [(s, f) for s, f in ranked if s >= MIN_SCORE][:TOP_K]
