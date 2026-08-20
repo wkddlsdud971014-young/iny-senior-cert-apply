@@ -177,12 +177,58 @@ const CANNOT_ANSWER = [
 
 const hasAny = (text, words) => words.some(w => text.includes(w));
 
+// ---------- 저희가 다루지 않는 자격증 걸러내기 ----------
+// 2026-08-20 추가.
+//
+// "정보처리기사 환불 규정" 을 물으시면 환불 규정을 그대로 안내하고 있었습니다.
+// 환불 규정 문서에는 자격증명이 안 적혀 있어(저희가 다루는 여덟 가지 공통 규정),
+// Gemini 가 그 질문이 범위 밖인 줄 몰랐던 것입니다.
+// 그대로 두면 "여기서 정보처리기사도 접수되는구나" 로 오해하시게 됩니다.
+//
+// 모델의 판단에 맡기면 그때그때 다릅니다. 실제로 "미용사 환불 규정" 은 거절했는데
+// "정보처리기사 환불 규정" 은 답했습니다. 그래서 규칙으로 확실히 끊습니다.
+const OUR_CERTS = [
+  "한식조리기능사", "지게차운전기능사", "굴착기운전기능사", "전기기능사",
+  "손해평가사", "공인중개사", "요양보호사", "위생사",
+];
+
+// 자격증을 가리키는 별칭만 넣습니다.
+// "전기", "한식" 같은 넓은 낱말은 넣지 않습니다. 넣으면 "전기기사" 까지 통과합니다.
+const CERT_NICKNAMES = [
+  "포크레인", "포클레인", "굴삭기", "지게차면허",
+  "요양사", "요보사", "손평사", "한조기",
+];
+
+// "정보처리기사", "제과기능사" 처럼 자격증 이름꼴을 찾습니다.
+const CERT_LIKE = /[가-힣]{2,8}?(기능사|기사)/g;
+
+function outOfScopeCert(question) {
+  const flat = question.replace(/\s/g, "");
+  const hits = flat.match(CERT_LIKE) || [];
+  for (const h of hits) {
+    if (OUR_CERTS.some(c => c.includes(h) || h.includes(c))) continue;
+    if (CERT_NICKNAMES.some(w => h.includes(w))) continue;
+    return h;   // 저희가 다루지 않는 자격증
+  }
+  return null;
+}
+
 function fixedAnswer(question, docs) {
   const q = question.replace(/\s/g, "");
   const unknown   = notice(docs, NOTICE_UNKNOWN,   DEFAULT_UNKNOWN);
   const practical = notice(docs, NOTICE_PRACTICAL, DEFAULT_PRACTICAL);
 
   if (hasAny(q, PRACTICAL_WORDS)) return [practical, "실기 질문"];
+
+  // 저희가 다루지 않는 자격증이면 여기서 끊습니다.
+  // 안내 문구는 문서("저희가 다루는 자격증 여덟 가지")에서 읽어 직원이 고칠 수 있게 합니다.
+  const other = outOfScopeCert(question);
+  if (other) {
+    const list = notice(docs, "저희가 다루는 자격증 여덟 가지", "");
+    const head = `${other} 는 저희가 접수를 도와드리지 않습니다.`;
+    return [list ? `${head}\n${list}` : head, "다루지 않는 자격증: " + other];
+  }
+
   for (const [subjects, topics, label] of UNKNOWN_RULES) {
     if (hasAny(q, subjects) && hasAny(q, topics)) return [unknown, "확인 못 한 항목: " + label];
   }

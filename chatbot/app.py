@@ -109,6 +109,42 @@ CANNOT_ANSWER = [
 ]
 
 
+# 저희가 다루지 않는 자격증 걸러내기 (2026-08-20 추가)
+#
+# "정보처리기사 환불 규정" 을 물으시면 환불 규정을 그대로 안내하고 있었습니다.
+# 환불 규정 문서에는 자격증명이 없어(여덟 가지 공통 규정) Gemini 가 범위 밖인 줄
+# 몰랐던 것입니다. "여기서 정보처리기사도 접수되는구나" 로 오해하시게 됩니다.
+#
+# 모델 판단에 맡기면 그때그때 다릅니다. "미용사 환불 규정" 은 거절했는데
+# "정보처리기사 환불 규정" 은 답했습니다. 그래서 규칙으로 끊습니다.
+# api/chat.js 의 outOfScopeCert() 와 같은 규칙이어야 합니다.
+OUR_CERTS = [
+    "한식조리기능사", "지게차운전기능사", "굴착기운전기능사", "전기기능사",
+    "손해평가사", "공인중개사", "요양보호사", "위생사",
+]
+
+# 자격증을 가리키는 별칭만. "전기", "한식" 같은 넓은 낱말은 넣지 않습니다.
+# 넣으면 "전기기사" 까지 통과합니다.
+CERT_NICKNAMES = [
+    "포크레인", "포클레인", "굴삭기", "지게차면허",
+    "요양사", "요보사", "손평사", "한조기",
+]
+
+CERT_LIKE = re.compile(r"[가-힣]{2,8}?(?:기능사|기사)")
+
+
+def out_of_scope_cert(question):
+    """저희가 다루지 않는 자격증이면 그 이름을 돌려줍니다. 아니면 None."""
+    flat = question.replace(" ", "")
+    for h in CERT_LIKE.findall(flat):
+        if any(c in h or h in c for c in OUR_CERTS):
+            continue
+        if any(w in h for w in CERT_NICKNAMES):
+            continue
+        return h
+    return None
+
+
 def has_any(text, words):
     return any(w in text for w in words)
 
@@ -122,6 +158,13 @@ def fixed_answer(question, docs):
     # 1) 실기
     if has_any(q, PRACTICAL_WORDS):
         return practical, "실기 질문"
+
+    # 1-2) 저희가 다루지 않는 자격증
+    other = out_of_scope_cert(question)
+    if other:
+        listing = notice(docs, "저희가 다루는 자격증 여덟 가지", "")
+        head = f"{other} 는 저희가 접수를 도와드리지 않습니다."
+        return (f"{head}\n{listing}" if listing else head), "다루지 않는 자격증: " + other
 
     # 2) 확인 못 한 8가지
     for subjects, topics, label in UNKNOWN_RULES:
