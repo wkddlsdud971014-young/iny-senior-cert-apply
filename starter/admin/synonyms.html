@@ -69,19 +69,19 @@
     그런 말은 챗봇 안에 이미 들어 있습니다.
   </div>
 
-  <div class="bar">
-    <button id="reload">새로 불러오기</button>
-    <span id="msg"></span>
-  </div>
-
-  <div class="hint" style="background:#fff;">
-    <b>새로 넣기</b>
-    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; align-items:center;">
-      <input id="new-short" type="text" placeholder="어르신이 쓰시는 말 (예: 포크레인)" style="flex:1; min-width:200px;">
-      <span aria-hidden="true">→</span>
-      <input id="new-full" type="text" placeholder="문서에 적힌 이름 (예: 굴착기운전기능사)" style="flex:1; min-width:200px;">
+  <div class="doc">
+    <div class="doc-head"><b>새로 넣기</b></div>
+    <div class="bar" style="margin:0;">
+      <input id="new-short" type="text" placeholder="어르신이 쓰시는 말 (예: 포크레인)" style="flex:1; min-width:180px;">
+      <span aria-hidden="true" style="font-size:20px;">→</span>
+      <input id="new-full" type="text" placeholder="문서에 적힌 이름 (예: 굴착기운전기능사)" style="flex:1; min-width:180px;">
       <button id="add">넣기</button>
     </div>
+  </div>
+
+  <div class="bar">
+    <button class="ghost" id="reload">새로 불러오기</button>
+    <span id="msg"></span>
   </div>
 
   <div id="list"></div>
@@ -142,14 +142,20 @@ function draw() {
   $("list").innerHTML = ROWS.map(function (r) {
     const off = !r.is_active;
     return '' +
-      '<div class="card" data-short="' + esc(r.short) + '"' + (off ? ' style="opacity:.55;"' : '') + '>' +
-        '<div class="row">' +
-          '<b>' + esc(r.short) + '</b>' +
-          '<span aria-hidden="true"> → </span>' +
-          '<input class="full" type="text" value="' + esc(r.full) + '">' +
+      '<div class="doc ' + (off ? "off" : "") + '" data-short="' + esc(r.short) + '">' +
+        '<div class="doc-head">' +
+          '<span class="no">어르신이 쓰시는 말</span>' +
+          '<b style="font-size:18px;">' + esc(r.short) + '</b>' +
+          (off ? '<span class="tag">꺼짐 · 챗봇이 쓰지 않습니다</span>' : '') +
+        '</div>' +
+        '<div class="bar" style="margin:0;">' +
+          '<span class="no" style="min-width:104px;">문서에 적힌 이름</span>' +
+          '<input class="full" type="text" value="' + esc(r.full) + '" style="flex:1; min-width:200px;">' +
+        '</div>' +
+        '<div class="doc-foot">' +
           '<button class="save">저장</button>' +
           '<button class="ghost toggle">' + (off ? "다시 켜기" : "끄기") + '</button>' +
-          (off ? '<span class="sub">꺼져 있음 · 챗봇이 쓰지 않습니다</span>' : '') +
+          '<span class="state"></span>' +
         '</div>' +
       '</div>';
   }).join("");
@@ -174,7 +180,7 @@ $("add").addEventListener("click", async function () {
 
 // ---------- 고치기 · 끄기 ----------
 $("list").addEventListener("click", async function (e) {
-  const card = e.target.closest(".card");
+  const card = e.target.closest(".doc");
   if (!card) return;
   const short = card.dataset.short;
   const row = ROWS.find(r => r.short === short);
@@ -188,6 +194,8 @@ $("list").addEventListener("click", async function (e) {
     e.target.disabled = false;
     if (error) { say("저장하지 못했습니다. (" + error.message + ")"); return; }
     row.full = full;
+    const st = card.querySelector(".state");
+    if (st) { st.textContent = "저장했습니다"; st.className = "state saved"; }
     say("저장했습니다 · 챗봇에 바로 반영됩니다", true);
   }
 
