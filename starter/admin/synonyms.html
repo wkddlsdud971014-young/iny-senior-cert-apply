@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>말 바꾸기 · 두두자격지원센터</title>
+<link rel="stylesheet" href="../style.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+
+    <div class="nav-top">
+      <a class="brand" href="../index.html">
+        <span class="logo-mark" aria-hidden="true">두두</span>
+        <span class="logo-name">두두자격지원센터</span>
+      </a>
+      <ul class="util">
+        <li><a href="../check.html">접수 확인</a></li>
+        <li><a href="integrated.html" class="on">직원용</a></li>
+      </ul>
+    </div>
+
+    <div class="nav-bottom">
+      <a class="home" href="../index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M9.75 20v-5.5h4.5V20"/></svg> 홈</a>
+      <ul class="menu">
+        <li><a href="../apply.html">접수 신청</a></li>
+        <li><a href="../faq.html">물어보기</a></li>
+      </ul>
+    </div>
+
+  </div>
+</nav>
+
+
+<div id="lock">
+  <h1>직원용 화면입니다</h1>
+  <p>비밀번호를 넣어 주십시오.</p>
+  <form id="lock-form">
+    <input id="pw" type="password" inputmode="numeric" autocomplete="off" maxlength="8">
+    <button type="submit">들어가기</button>
+  </form>
+  <p id="lock-err" hidden style="font-weight:700;">비밀번호가 맞지 않습니다.</p>
+  <p><a href="../index.html">← 홈으로 돌아가기</a></p>
+</div>
+
+<div class="wrap" id="main" hidden>
+
+  <h1>말 바꾸기</h1>
+  <p class="sub">어르신이 쓰시는 다른 이름을 챗봇이 알아듣게 합니다</p>
+
+  <div class="subtabs">
+    <a href="integrated.html">접수 내역</a>
+    <a href="faq.html">문서 고치기</a>
+    <a href="synonyms.html" class="on">말 바꾸기</a>
+  </div>
+
+  <div class="hint">
+    <b>같은 자격증을 부르는 다른 이름만 넣어 주십시오.</b>
+    예를 들어 "포크레인"은 굴착기운전기능사를 가리키는 말이므로 넣어도 됩니다.
+    <br>
+    <b>다른 자격증의 이름을 넣으시면 안 됩니다.</b>
+    "전기기사"는 전기기능사와 <b>다른 자격증</b>입니다. 등급도 응시료도 다릅니다.
+    이런 것을 넣으면 전기기사를 접수하려는 분께 엉뚱한 안내를 하게 됩니다.
+    <br>
+    "얼마", "취소" 같은 <b>보통 말은 여기서 다루지 않습니다.</b>
+    그런 말은 챗봇 안에 이미 들어 있습니다.
+  </div>
+
+  <div class="bar">
+    <button id="reload">새로 불러오기</button>
+    <span id="msg"></span>
+  </div>
+
+  <div class="hint" style="background:#fff;">
+    <b>새로 넣기</b>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; align-items:center;">
+      <input id="new-short" type="text" placeholder="어르신이 쓰시는 말 (예: 포크레인)" style="flex:1; min-width:200px;">
+      <span aria-hidden="true">→</span>
+      <input id="new-full" type="text" placeholder="문서에 적힌 이름 (예: 굴착기운전기능사)" style="flex:1; min-width:200px;">
+      <button id="add">넣기</button>
+    </div>
+  </div>
+
+  <div id="list"></div>
+</div>
+
+<script>
+const ADMIN_PW = "0000", KEY = "admin-ok";
+const lock = document.getElementById("lock"), main = document.getElementById("main");
+function unlock(){ lock.hidden = true; main.hidden = false; if (window.start) window.start(); }
+if (sessionStorage.getItem(KEY) === "1") unlock(); else document.getElementById("pw").focus();
+document.getElementById("lock-form").addEventListener("submit", function(e){
+  e.preventDefault();
+  const pw = document.getElementById("pw");
+  if (pw.value === ADMIN_PW) { sessionStorage.setItem(KEY,"1"); unlock(); }
+  else { document.getElementById("lock-err").hidden = false; pw.value=""; pw.focus(); }
+});
+</script>
+
+<script src="../config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// =============================================================
+// 말 바꾸기 (동의어)
+//
+// 어르신은 "포크레인", "요보사" 처럼 문서에 적힌 것과 다른 이름으로
+// 물으십니다. 챗봇은 문서에 적힌 낱말로 찾기 때문에, 그대로 두면
+// 답을 못 찾습니다. 여기서 넣어 주시면 챗봇이 알아듣습니다.
+//
+// 지우기는 없습니다. 대신 "끔"으로 내려 둡니다.
+// 한 번 넣은 말을 실수로 없애지 않기 위해서입니다. (문서 고치기와 같습니다)
+//
+// 넣으신 것은 챗봇이 질문마다 새로 읽습니다. 배포를 다시 하지 않아도
+// 바로 반영됩니다.
+// =============================================================
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+const esc = v => String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+let ROWS = [];
+
+function say(t, ok) { $("msg").textContent = t; $("msg").style.color = ok ? "#1F7A3D" : "#BE5427"; }
+
+async function load() {
+  say("불러오는 중입니다...");
+  const { data, error } = await db.from("synonyms")
+    .select("short,full,is_active")
+    .order("short");
+  if (error) { say("불러오지 못했습니다. (" + error.message + ")"); return; }
+  ROWS = data || [];
+  draw();
+  say(ROWS.length + "개를 불러왔습니다.", true);
+}
+
+function draw() {
+  if (!ROWS.length) {
+    $("list").innerHTML = '<p class="sub">아직 넣으신 말이 없습니다.</p>';
+    return;
+  }
+  $("list").innerHTML = ROWS.map(function (r) {
+    const off = !r.is_active;
+    return '' +
+      '<div class="card" data-short="' + esc(r.short) + '"' + (off ? ' style="opacity:.55;"' : '') + '>' +
+        '<div class="row">' +
+          '<b>' + esc(r.short) + '</b>' +
+          '<span aria-hidden="true"> → </span>' +
+          '<input class="full" type="text" value="' + esc(r.full) + '">' +
+          '<button class="save">저장</button>' +
+          '<button class="ghost toggle">' + (off ? "다시 켜기" : "끄기") + '</button>' +
+          (off ? '<span class="sub">꺼져 있음 · 챗봇이 쓰지 않습니다</span>' : '') +
+        '</div>' +
+      '</div>';
+  }).join("");
+}
+
+// ---------- 새로 넣기 ----------
+$("add").addEventListener("click", async function () {
+  const short = $("new-short").value.trim();
+  const full  = $("new-full").value.trim();
+
+  if (!short || !full) { say("두 칸을 모두 채워 주십시오."); return; }
+  if (short === full)  { say("같은 말을 넣으실 필요는 없습니다."); return; }
+  if (short.length < 2) { say("두 글자보다 짧은 말은 넣지 마십시오. 다른 말에 섞여 잘못 걸립니다."); return; }
+  if (ROWS.some(r => r.short === short)) { say("'" + short + "' 은(는) 이미 있습니다."); return; }
+
+  const { error } = await db.from("synonyms").insert({ short: short, full: full });
+  if (error) { say("넣지 못했습니다. (" + error.message + ")"); return; }
+  $("new-short").value = ""; $("new-full").value = "";
+  await load();
+  say("'" + short + "' → '" + full + "' 넣었습니다. 챗봇에 바로 반영됩니다.", true);
+});
+
+// ---------- 고치기 · 끄기 ----------
+$("list").addEventListener("click", async function (e) {
+  const card = e.target.closest(".card");
+  if (!card) return;
+  const short = card.dataset.short;
+  const row = ROWS.find(r => r.short === short);
+  if (!row) return;
+
+  if (e.target.classList.contains("save")) {
+    const full = card.querySelector(".full").value.trim();
+    if (!full) { say("바꿀 이름을 적어 주십시오."); return; }
+    e.target.disabled = true; say("저장 중입니다...");
+    const { error } = await db.from("synonyms").update({ full: full }).eq("short", short);
+    e.target.disabled = false;
+    if (error) { say("저장하지 못했습니다. (" + error.message + ")"); return; }
+    row.full = full;
+    say("저장했습니다 · 챗봇에 바로 반영됩니다", true);
+  }
+
+  if (e.target.classList.contains("toggle")) {
+    const next = !row.is_active;
+    const { error } = await db.from("synonyms").update({ is_active: next }).eq("short", short);
+    if (error) { say("바꾸지 못했습니다. (" + error.message + ")"); return; }
+    row.is_active = next;
+    draw();
+    say(next ? "다시 켰습니다." : "껐습니다. 챗봇이 이 말을 쓰지 않습니다.", true);
+  }
+});
+
+$("reload").addEventListener("click", load);
+window.start = load;
+if (!main.hidden) load();
+</script>
+</body>
+</html>

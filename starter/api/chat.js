@@ -63,13 +63,19 @@ function stem(word) {
   return word;
 }
 
-function tokens(text) {
+// extra 는 직원이 「말 바꾸기」 화면에서 넣은 것입니다. { 줄임말: 정식명칭 }
+// 코드에 적힌 SYNONYMS 위에 얹습니다. 표가 비어 있거나 못 읽어도
+// 코드에 적힌 것만으로 그대로 동작합니다.
+function tokens(text, extra = {}) {
   const words = String(text || "").toLowerCase().match(/[가-힣a-z0-9]+/g) || [];
   const out = new Set(words);
   for (const w of words) out.add(stem(w));
   const flat = String(text || "").replace(/\s/g, "");
-  for (const [word, extra] of Object.entries(SYNONYMS)) {
-    if (flat.includes(word)) extra.forEach(e => out.add(e));
+  for (const [word, more] of Object.entries(SYNONYMS)) {
+    if (flat.includes(word)) more.forEach(e => out.add(e));
+  }
+  for (const [short, full] of Object.entries(extra)) {
+    if (short && full && flat.includes(short)) out.add(full);
   }
   return out;
 }
@@ -98,11 +104,11 @@ function overlap(a, b) {
 // 옮기기 전 24문항으로 재어 보았습니다.
 //   상위 3개 안에 정답 문서가 드는 비율: 20/24(83%) → 22/24(92%)
 //   나빠진 문항은 없었습니다.
-function buildIdf(docs) {
+function buildIdf(docs, aliases = {}) {
   const n = docs.length;
   const df = new Map();
   for (const d of docs) {
-    const words = new Set([...tokens(d.title), ...tokens(d.content)]);
+    const words = new Set([...tokens(d.title, aliases), ...tokens(d.content, aliases)]);
     for (const w of words) df.set(w, (df.get(w) || 0) + 1);
   }
   // +1 은 한 번도 안 나온 낱말에서 0 으로 나누는 것을 막습니다.
@@ -110,8 +116,8 @@ function buildIdf(docs) {
 }
 
 // 제목에서 맞으면 두 배로 칩니다. 예전 방식과 같은 규칙입니다.
-function weighted(qt, doc, idf) {
-  const t = tokens(doc.title), c = tokens(doc.content);
+function weighted(qt, doc, idf, aliases = {}) {
+  const t = tokens(doc.title, aliases), c = tokens(doc.content, aliases);
   let s = 0;
   for (const w of qt) {
     if (t.has(w)) s += 2 * idf(w);
@@ -200,6 +206,30 @@ async function loadDocs() {
   return await res.json();
 }
 
+// ---------- 직원이 넣은 말 바꾸기 읽기 ----------
+// 문서와 같은 방식입니다. 질문마다 새로 읽어야 「말 바꾸기」 화면에서
+// 방금 넣은 것이 바로 반영됩니다.
+// 표가 없거나 못 읽어도 빈 것을 돌려줍니다. 그러면 코드에 적힌
+// SYNONYMS 만으로 지금까지처럼 동작합니다. 챗봇이 멈추지 않습니다.
+async function loadAliases() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_ANON_KEY;
+  if (!url || !key) return {};
+  try {
+    const res = await fetch(
+      `${url}/rest/v1/synonyms?select=short,full&is_active=eq.true`,
+      { headers: { apikey: key, Authorization: "Bearer " + key } }
+    );
+    if (!res.ok) return {};
+    const rows = await res.json();
+    const out = {};
+    for (const r of rows) if (r.short && r.full) out[r.short.trim()] = r.full.trim();
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 // ---------- 줄임말 풀이 ----------
 // 동의어는 지금까지 "검색"에만 쓰였습니다. 근거는 제대로 찾아 놓고도
 // Gemini 에게는 원래 질문이 그대로 가서, "개사" 같은 짧은 줄임말은
@@ -213,17 +243,18 @@ const CERT_ALIASES = {
   "한조기": "한식조리기능사", "조리사": "한식조리기능사",
 };
 
-function aliasHint(question) {
+function aliasHint(question, extra = {}) {
   const flat = question.replace(/\s/g, "");
+  const all = { ...CERT_ALIASES, ...extra };   // 직원이 넣은 것이 코드 값을 덮어씁니다
   const hits = [];
-  for (const [word, full] of Object.entries(CERT_ALIASES)) {
+  for (const [word, full] of Object.entries(all)) {
     if (flat.includes(word) && !flat.includes(full)) hits.push(`${word} = ${full}`);
   }
   return hits.length ? `\n\n[줄임말 풀이]\n${hits.join("\n")}` : "";
 }
 
 // ---------- Gemini ----------
-const PROMPT = (context, question) => `당신은 두두자격지원센터의 안내 직원입니다.
+const PROMPT = (context, question, aliases = {}) => `당신은 두두자격지원센터의 안내 직원입니다.
 아래 [근거]에 적힌 내용만 사용해서 어르신께 답하십시오.
 
 지켜야 할 것
@@ -240,10 +271,10 @@ const PROMPT = (context, question) => `당신은 두두자격지원센터의 안
 ${context}
 
 [질문]
-${question}${aliasHint(question)}
+${question}${aliasHint(question, aliases)}
 `;
 
-async function askGemini(question, context) {
+async function askGemini(question, context, aliases = {}) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
   try {
@@ -253,7 +284,7 @@ async function askGemini(question, context) {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": key },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: PROMPT(context, question) }] }],
+          contents: [{ parts: [{ text: PROMPT(context, question, aliases) }] }],
           generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
         }),
       }
@@ -291,6 +322,7 @@ export default async function handler(req, res) {
   if (!question) return res.status(200).json({ answer: "궁금하신 것을 적어 주십시오.", source: "" });
 
   const docs = await loadDocs();
+  const aliases = await loadAliases();   // 직원이 「말 바꾸기」 화면에서 넣은 것
 
   // 1~3) 정해진 답 (거절 문구는 문서에서 읽습니다)
   const [fixed, why] = fixedAnswer(question, docs);
@@ -301,11 +333,11 @@ export default async function handler(req, res) {
   }
 
   // 4~5) 검색 (안내문은 근거에서 제외)
-  const q = tokens(question);
+  const q = tokens(question, aliases);
   const pool = docs.filter(d => !isNotice(d));
-  const idf = buildIdf(pool);
+  const idf = buildIdf(pool, aliases);
   const ranked = pool
-    .map(d => ({ score: weighted(q, d, idf), doc: d }))
+    .map(d => ({ score: weighted(q, d, idf, aliases), doc: d }))
     .filter(x => x.score >= MIN_SCORE)
     .sort((a, b) => b.score - a.score)
     .slice(0, TOP_K);
@@ -321,7 +353,7 @@ export default async function handler(req, res) {
   const source = "근거: " + ranked[0].doc.title;
 
   // 6) 문장 다듬기
-  const made = await askGemini(question, context);
+  const made = await askGemini(question, context, aliases);
   if (made) return res.status(200).json({ answer: forScreen(trim(made)), source });
 
   // Gemini 를 못 쓰면 문서 내용을 그대로 보여 드립니다. 지어내지 않습니다.

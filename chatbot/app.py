@@ -140,9 +140,15 @@ def fixed_answer(question, docs):
 # 검색 — 질문과 문서에 같이 나오는 단어를 셉니다
 # =============================================================
 
-def tokens(text):
+def tokens(text, extra_aliases=None):
     """글에서 단어를 뽑습니다.
-       조사를 떼고, 비슷한말은 문서에 적힌 말로 바꿔 함께 넣습니다."""
+       조사를 떼고, 비슷한말은 문서에 적힌 말로 바꿔 함께 넣습니다.
+
+       extra_aliases 는 직원이 「말 바꾸기」 화면에서 넣은 것입니다.
+       {줄임말: 정식명칭} 꼴이며, 코드에 적힌 SYNONYMS 위에 얹습니다.
+       표가 비어 있거나 못 읽어도 코드에 적힌 것만으로 그대로 동작합니다.
+       api/chat.js 의 tokens() 와 같은 규칙이어야 합니다.
+    """
     words = re.findall(r"[가-힣A-Za-z0-9]+", text.lower())
 
     base = set(words)
@@ -154,7 +160,34 @@ def tokens(text):
     for word, extra in SYNONYMS.items():
         if word in flat:
             base |= set(extra)
+    for short, full in (extra_aliases or {}).items():
+        if short and full and short in flat:
+            base.add(full)
     return base
+
+
+def load_aliases():
+    """직원이 「말 바꾸기」 화면에서 넣은 것을 가져옵니다.
+
+    문서와 같은 방식입니다. 질문마다 새로 읽어야 방금 넣은 것이 바로
+    반영됩니다. 표가 없거나 못 읽으면 빈 것을 돌려줍니다. 그러면 코드에
+    적힌 SYNONYMS 만으로 지금까지처럼 동작합니다. 챗봇이 멈추지 않습니다.
+    """
+    if not (SUPABASE_URL and SUPABASE_ANON_KEY):
+        return {}
+    try:
+        url = SUPABASE_URL + "/rest/v1/synonyms?select=short,full&is_active=eq.true"
+        req = urllib.request.Request(url, headers={
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+        })
+        with urllib.request.urlopen(req, timeout=10) as r:
+            rows = json.loads(r.read())
+        return {x["short"].strip(): x["full"].strip()
+                for x in rows if x.get("short") and x.get("full")}
+    except Exception as e:
+        print(f"  [말 바꾸기] 표를 못 읽어 코드에 적힌 것만 씁니다: {e}")
+        return {}
 
 
 def load_docs():
@@ -185,7 +218,7 @@ def load_docs():
     return json.loads(FAQ_PATH.read_text(encoding="utf-8"))
 
 
-def build_idf(faqs):
+def build_idf(faqs, aliases=None):
     """
     낱말마다 무게를 매깁니다. (IDF - 2026-08-20 추가)
 
@@ -203,7 +236,7 @@ def build_idf(faqs):
     n = len(faqs)
     df = {}
     for faq in faqs:
-        for w in tokens(faq["title"]) | tokens(faq["text"]):
+        for w in tokens(faq["title"], aliases) | tokens(faq["text"], aliases):
             df[w] = df.get(w, 0) + 1
     # +1 은 한 번도 안 나온 낱말에서 0 으로 나누는 것을 막습니다.
     return lambda w: math.log((n + 1) / (df.get(w, 0) + 1)) + 1
@@ -211,16 +244,17 @@ def build_idf(faqs):
 
 def search(question):
     faqs = [d for d in load_docs() if not is_notice(d)]   # 안내문은 근거에서 제외
-    q = tokens(question)
-    idf = build_idf(faqs)
+    aliases = load_aliases()   # 직원이 「말 바꾸기」 화면에서 넣은 것
+    q = tokens(question, aliases)
+    idf = build_idf(faqs, aliases)
 
     ranked = []
     for faq in faqs:
         # 제목에 겹치는 낱말은 두 배로 셉니다.
         # "환불 되나요?" 는 본문에 '환불'이 스쳐 지나가는 문서보다
         # 제목이 '환불 규정'인 문서가 먼저 나와야 합니다.
-        title_words = tokens(faq["title"])
-        text_words  = tokens(faq["text"])
+        title_words = tokens(faq["title"], aliases)
+        text_words  = tokens(faq["text"], aliases)
         score = 0.0
         for w in q:
             if w in title_words:
@@ -258,13 +292,45 @@ PROMPT = """당신은 두두자격지원센터의 안내 직원입니다.
 """
 
 
-def ask_gemini(question, context):
+# 자격증을 부르는 다른 이름만 따로 모읍니다.
+# 동의어는 지금까지 "검색"에만 쓰였습니다. 근거는 제대로 찾아 놓고도
+# Gemini 에게는 원래 질문이 그대로 가서, "개사" 같은 짧은 줄임말은
+# Gemini 가 못 알아듣고 "모르겠습니다"로 답하는 일이 있었습니다.
+# 그래서 어떤 줄임말을 쓰셨는지 한 줄로 알려 드립니다.
+#
+# 질문 자체는 고치지 않습니다. SYNONYMS 에는 "얼마" → "응시료" 같은 항목도
+# 있어서 그대로 바꾸면 "얼마예요"가 "응시료예요"가 되어 문장이 망가집니다.
+# api/chat.js 의 CERT_ALIASES · aliasHint() 와 같은 내용이어야 합니다.
+CERT_ALIASES = {
+    "포크레인": "굴착기운전기능사", "포클레인": "굴착기운전기능사",
+    "굴삭기": "굴착기운전기능사", "지게차면허": "지게차운전기능사",
+    "요양사": "요양보호사", "요보사": "요양보호사",
+    "손평사": "손해평가사", "개사": "공인중개사",
+    "공개사": "공인중개사", "중개사": "공인중개사",
+    "한조기": "한식조리기능사", "조리사": "한식조리기능사",
+}
+
+
+def alias_hint(question, extra=None):
+    """질문에 쓰인 줄임말을 한 줄로 풀어 줍니다. 없으면 빈 글자입니다."""
+    flat = question.replace(" ", "")
+    allmap = dict(CERT_ALIASES)
+    allmap.update(extra or {})          # 직원이 넣은 것이 코드 값을 덮어씁니다
+    hits = [f"{w} = {full}" for w, full in allmap.items()
+            if w in flat and full not in flat]
+    return "\n\n[줄임말 풀이]\n" + "\n".join(hits) if hits else ""
+
+
+def ask_gemini(question, context, aliases=None):
     """실패하면 None 을 돌려줍니다. 그러면 문서 내용을 그대로 보여 줍니다."""
     if not (USE_GEMINI and GEMINI_API_KEY):
         return None
 
     body = json.dumps({
-        "contents": [{"parts": [{"text": PROMPT.format(context=context, question=question)}]}],
+        "contents": [{"parts": [{"text": PROMPT.format(
+            context=context,
+            question=question + alias_hint(question, aliases),
+        )}]}],
         # maxOutputTokens 를 넉넉히 둡니다.
         # 요즘 모델은 답하기 전에 "생각"하는 데도 토큰을 써서,
         # 자리가 모자라면 문장이 중간에 잘립니다.
@@ -330,7 +396,7 @@ def answer(question):
     source = " / ".join(f["title"] for _, f in found)
 
     # 6) 문장 다듬기
-    made = ask_gemini(question, context)
+    made = ask_gemini(question, context, load_aliases())
     if made:
         return trim(made), "근거: " + source
 
