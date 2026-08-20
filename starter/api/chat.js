@@ -213,6 +213,97 @@ function outOfScopeCert(question) {
   return null;
 }
 
+// ---------- 상담 기록 3,347건 ----------
+// 2026-08-20 추가.
+//
+// 안내 문서(faq_docs)는 발주 문서를 보고 직접 쓴 23건이라 정확하지만 범위가 좁습니다.
+// 실습에서 쓰던 상담 기록 4,705건을 답변 기준으로 묶어(같은 답끼리 합치고 질문 표현은
+// 모두 남겨) 3,347건으로 만들어 함께 싣습니다.
+//
+// Supabase 표에 넣지 않고 파일로 싣는 이유:
+//   Supabase 는 한 번에 1,000행까지만 돌려줍니다. 3,347건을 읽으려면 질문마다
+//   네 번씩 나눠 받아야 해서 느려집니다. 파일은 함수가 처음 뜰 때 한 번만 읽습니다.
+//
+// 칸 이름은 c(자격증) g(분류) q(질문들) a(답변) 로 줄였습니다. 1.98MB 입니다.
+import BULK from "./faq-bulk.js";
+
+// 자격증명과 분류를 여러 번 적어 비중을 올립니다.
+// 상담 기록은 대화가 길어 자격증명 한 낱말이 묻히기 때문입니다.
+// 실습(S6)에서 8개 자격증 × 3개 주제 = 24문항으로 재어 5번으로 정했습니다.
+//   1번 17/24 · 3번 18/24 · 5번 24/24 · 7번 24/24
+const CERT_WEIGHT = 5;
+
+// 상담 기록의 자격증명은 짧은 형태입니다(전기, 한식조리, 굴착기, 지게차).
+// 어르신은 정식 명칭으로도 물으시므로 두 형태를 함께 넣습니다.
+const CERT_FULL = {
+  "전기": "전기기능사", "한식조리": "한식조리기능사",
+  "굴착기": "굴착기운전기능사", "지게차": "지게차운전기능사",
+  "요양보호사": "요양보호사", "위생사": "위생사",
+  "손해평가사": "손해평가사", "공인중개사": "공인중개사",
+};
+
+const bulkText = d => {
+  const full = CERT_FULL[d.c] || d.c;
+  const name = `${d.c} ${full} `;
+  return `${name.repeat(CERT_WEIGHT)}${(d.g + " ").repeat(CERT_WEIGHT)}${d.q} ${d.a}`;
+};
+
+// 질문에 자격증이 나오면 그 자격증 상담만 봅니다.
+// 문턱만으로는 가를 수 없기 때문입니다. 실제로 재어 보니
+// 관련 없는 질문이 9.4점인데 정상 질문이 7.3점인 경우가 있었습니다.
+// 자격증을 먼저 좁히면 그런 겹침이 사라집니다.
+function certInQuestion(question) {
+  const flat = question.replace(/\s/g, "");
+  for (const [short, full] of Object.entries(CERT_FULL)) {
+    if (flat.includes(full) || flat.includes(short)) return short;
+  }
+  const nick = {
+    "포크레인": "굴착기", "포클레인": "굴착기", "굴삭기": "굴착기",
+    "지게차면허": "지게차", "요양사": "요양보호사", "요보사": "요양보호사",
+    "손평사": "손해평가사", "한조기": "한식조리",
+    "개사": "공인중개사", "공개사": "공인중개사", "중개사": "공인중개사",
+  };
+  for (const [w, c] of Object.entries(nick)) if (flat.includes(w)) return c;
+  return null;
+}
+
+// 함수가 처음 뜰 때 한 번만 만듭니다. 그 뒤 질문에서는 다시 만들지 않습니다.
+let BULK_IDF = null;
+let BULK_TOKENS = null;
+function prepareBulk() {
+  if (BULK_IDF) return;
+  BULK_TOKENS = BULK.map(d => tokens(bulkText(d)));
+  const df = new Map();
+  for (const set of BULK_TOKENS) for (const w of set) df.set(w, (df.get(w) || 0) + 1);
+  const n = BULK.length;
+  BULK_IDF = w => Math.log((n + 1) / ((df.get(w) || 0) + 1)) + 1;
+}
+
+// 상담 기록 점수 문턱. 자격증을 먼저 좁히므로 아주 높게 둘 필요는 없습니다.
+// 재어 보니 정상 질문의 최저가 7.3, 자격증을 안 밝힌 질문은 후보 자체가 안 생겨
+// 0 이었습니다. 그 사이인 5 로 잡았습니다.
+const BULK_MIN_SCORE = 5;
+
+function searchBulk(question, aliases = {}) {
+  prepareBulk();
+  const q = tokens(question, aliases);
+  const cert = certInQuestion(question);
+  // 자격증을 안 밝히고 물으시면 어느 자격증 상담을 골라야 할지 알 수 없습니다.
+  // 그때는 상담 기록을 쓰지 않습니다. 안내 문서에서 못 찾았다면 모른다고 답합니다.
+  if (!cert) return [];
+
+  const out = [];
+  for (let i = 0; i < BULK.length; i++) {
+    if (BULK[i].c !== cert) continue;
+    const words = BULK_TOKENS[i];
+    let s = 0;
+    for (const w of q) if (words.has(w)) s += BULK_IDF(w);
+    if (s >= BULK_MIN_SCORE) out.push({ score: s, doc: BULK[i] });
+  }
+  out.sort((a, b) => b.score - a.score);
+  return out.slice(0, TOP_K);
+}
+
 function fixedAnswer(question, docs) {
   const q = question.replace(/\s/g, "");
   const unknown   = notice(docs, NOTICE_UNKNOWN,   DEFAULT_UNKNOWN);
@@ -382,26 +473,56 @@ export default async function handler(req, res) {
   const q = tokens(question, aliases);
   const pool = docs.filter(d => !isNotice(d));
   const idf = buildIdf(pool, aliases);
-  const ranked = pool
+  const rankedDocs = pool
     .map(d => ({ score: weighted(q, d, idf, aliases), doc: d }))
     .filter(x => x.score >= MIN_SCORE)
     .sort((a, b) => b.score - a.score)
     .slice(0, TOP_K);
 
-  if (!ranked.length) {
-    return res.status(200).json({
-      answer: notice(docs, NOTICE_UNKNOWN, DEFAULT_UNKNOWN),
-      source: "문서에서 근거를 찾지 못함",
-    });
+  // 4-2) 안내 문서로 답이 안 나오면 상담 기록 3,347건을 본다
+  //
+  // 안내 문서 23건은 발주 문서를 보고 직접 쓴 것이라 정확하지만 범위가 좁습니다.
+  // 상담 기록은 범위가 넓은 대신 검증된 문서가 아닙니다.
+  // 그래서 **안내 문서를 먼저** 보고, 거기서 답이 안 나올 때만 상담 기록을 봅니다.
+  // 순서를 바꾸면 검증되지 않은 내용이 검증된 안내문을 밀어냅니다.
+  //
+  // "찾지 못했을 때"가 아니라 "답이 안 나왔을 때"로 잡았습니다.
+  // 문서를 찾긴 했는데 주제가 달라 Gemini 가 거절하는 경우가 더 흔하기 때문입니다.
+  // ("굴착기 시험장 어디예요" → 「어디서 접수하나」를 찾았지만 시험장 얘기가 없음)
+
+  // 답이 사실상 "모르겠습니다" 인지 봅니다.
+  const isUnknown = s => !s || /모르겠|확인할 수 없|알려드릴 수 없/.test(s);
+
+  async function tryAnswer(hits, bulk) {
+    if (!hits.length) return null;
+    const context = bulk
+      // 상담 기록에는 본문에 자격증명이 안 나옵니다. 통화하는 두 사람은 이미 알고
+      // 있어 말하지 않기 때문입니다. 그대로 넘기면 다른 자격증 금액을 옮겨 말하게 됩니다.
+      // 그래서 근거마다 어느 자격증 상담인지 함께 적습니다.
+      ? hits.map(x => `- [${x.doc.c} · ${x.doc.g}] 상담 기록\n${x.doc.a}`).join("\n\n")
+      : hits.map(x => `- ${x.doc.title}\n${x.doc.content}`).join("\n\n");
+    const src = bulk
+      ? `근거: ${hits[0].doc.c} 상담 기록 (${hits[0].doc.g})`
+      : "근거: " + hits[0].doc.title;
+
+    const made = await askGemini(question, context, aliases);
+    if (made && !isUnknown(made)) return { answer: forScreen(trim(made)), source: src };
+    // Gemini 를 못 쓰면 문서 내용을 그대로 보여 드립니다. 지어내지 않습니다.
+    if (!made) {
+      const plain = bulk ? hits[0].doc.a : hits[0].doc.content;
+      return { answer: forScreen(plain), source: src };
+    }
+    return null;   // 근거는 있었으나 답이 안 나온 경우
   }
 
-  const context = ranked.map(x => `- ${x.doc.title}\n${x.doc.content}`).join("\n\n");
-  const source = "근거: " + ranked[0].doc.title;
+  const first = await tryAnswer(rankedDocs, false);
+  if (first) return res.status(200).json(first);
 
-  // 6) 문장 다듬기
-  const made = await askGemini(question, context, aliases);
-  if (made) return res.status(200).json({ answer: forScreen(trim(made)), source });
+  const second = await tryAnswer(searchBulk(question, aliases), true);
+  if (second) return res.status(200).json(second);
 
-  // Gemini 를 못 쓰면 문서 내용을 그대로 보여 드립니다. 지어내지 않습니다.
-  return res.status(200).json({ answer: forScreen(ranked[0].doc.content), source });
+  return res.status(200).json({
+    answer: notice(docs, NOTICE_UNKNOWN, DEFAULT_UNKNOWN),
+    source: "문서에서 근거를 찾지 못함",
+  });
 }
