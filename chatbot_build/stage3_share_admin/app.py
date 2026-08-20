@@ -69,7 +69,12 @@ def do_add_faq(cert, title, text, keywords_str):
 def do_delete_faq(faq_id_str):
     if not faq_id_str.strip():
         return "삭제할 FAQ의 ID를 입력하세요", get_faq_table()
-    delete_faq_entry(faq_id_str.strip())
+    # 지우지 못했을 때 "삭제 완료"라고 말하지 않기 위해 예외를 받는다.
+    try:
+        delete_faq_entry(faq_id_str.strip())
+    except Exception as error:
+        reload_faq()
+        return f"삭제하지 못했습니다 - {error}", get_faq_table()
     reload_faq()
     return f"삭제 완료: {faq_id_str.strip()}", get_faq_table()
 
@@ -85,7 +90,11 @@ def do_add_synonym(short, full):
 def do_delete_synonym(short):
     if not short.strip():
         return "삭제할 줄임말을 입력하세요", get_synonyms_table()
-    delete_synonym(short.strip())
+    try:
+        delete_synonym(short.strip())
+    except Exception as error:
+        reload_synonyms()
+        return f"삭제하지 못했습니다 - {error}", get_synonyms_table()
     reload_synonyms()
     return f"삭제 완료: {short.strip()}", get_synonyms_table()
 

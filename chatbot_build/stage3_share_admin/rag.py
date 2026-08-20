@@ -69,11 +69,18 @@ def add_synonym(short, full):
 
 
 def delete_synonym(short):
-    if short in SYNONYMS:
-        del SYNONYMS[short]
-        if USE_DB:
-            store.delete_synonym_row(short)
-        _save_synonyms()
+    # 사전에 없는 말이면 여기서 알려 준다.
+    # 예전에는 조용히 아무것도 하지 않고 끝나서, 화면에는 "삭제 완료"가 떴다.
+    # 없는 것을 지웠다고 말하면 담당자가 오타를 낸 줄도 모르고 넘어간다.
+    if short not in SYNONYMS:
+        raise RuntimeError(f"'{short}' 은(는) 사전에 없습니다. 줄임말을 다시 확인해 주십시오.")
+
+    # 표를 먼저 지우고, 성공했을 때만 메모리에서 뺀다.
+    # 순서가 반대면 표에서 안 지워졌는데 화면 목록에서는 사라진다.
+    if USE_DB:
+        store.delete_synonym_row(short)   # 못 지우면 여기서 예외가 난다
+    del SYNONYMS[short]
+    _save_synonyms()
 
 
 def _expand_synonyms(text):
@@ -122,8 +129,14 @@ def add_faq_entry(cert, title, text, keywords):
 
 def delete_faq_entry(faq_id):
     global FAQ
+    # 없는 ID 를 넣으면 여기서 알려 준다.
+    # 예전에는 목록에서 걸러 내기만 해서, 없는 ID 를 넣어도 "삭제 완료"가 떴다.
+    # 파일 모드에서는 표에 요청조차 가지 않으므로 이 검사가 없으면 못 잡는다.
+    if not any(r["id"] == faq_id for r in FAQ):
+        raise RuntimeError(f"'{faq_id}' 은(는) 목록에 없습니다. ID 를 다시 확인해 주십시오.")
+
     if USE_DB:
-        store.delete_faq(faq_id)     # 해당 행만 테이블에서 지운다
+        store.delete_faq(faq_id)     # 못 지우면 여기서 예외가 난다
     FAQ = [r for r in FAQ if r["id"] != faq_id]
     _save_faq()
 
