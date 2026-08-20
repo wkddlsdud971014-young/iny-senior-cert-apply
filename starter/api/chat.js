@@ -155,6 +155,28 @@ async function loadDocs() {
   return await res.json();
 }
 
+// ---------- 줄임말 풀이 ----------
+// 동의어는 지금까지 "검색"에만 쓰였습니다. 근거는 제대로 찾아 놓고도
+// Gemini 에게는 원래 질문이 그대로 가서, "개사" 같은 짧은 줄임말은
+// Gemini 가 못 알아듣고 "모르겠습니다"로 답하는 일이 있었습니다.
+// 그래서 어떤 줄임말을 쓰셨는지 한 줄로 알려 드립니다.
+// 질문 자체는 고치지 않습니다. "얼마" 같은 말까지 바꾸면 문장이 망가집니다.
+const CERT_ALIASES = {
+  "포크레인": "굴착기운전기능사", "포클레인": "굴착기운전기능사", "굴삭기": "굴착기운전기능사",
+  "지게차면허": "지게차운전기능사", "요양사": "요양보호사", "요보사": "요양보호사",
+  "손평사": "손해평가사", "개사": "공인중개사", "공개사": "공인중개사", "중개사": "공인중개사",
+  "한조기": "한식조리기능사", "조리사": "한식조리기능사",
+};
+
+function aliasHint(question) {
+  const flat = question.replace(/\s/g, "");
+  const hits = [];
+  for (const [word, full] of Object.entries(CERT_ALIASES)) {
+    if (flat.includes(word) && !flat.includes(full)) hits.push(`${word} = ${full}`);
+  }
+  return hits.length ? `\n\n[줄임말 풀이]\n${hits.join("\n")}` : "";
+}
+
 // ---------- Gemini ----------
 const PROMPT = (context, question) => `당신은 두두자격지원센터의 안내 직원입니다.
 아래 [근거]에 적힌 내용만 사용해서 어르신께 답하십시오.
@@ -173,7 +195,7 @@ const PROMPT = (context, question) => `당신은 두두자격지원센터의 안
 ${context}
 
 [질문]
-${question}
+${question}${aliasHint(question)}
 `;
 
 async function askGemini(question, context) {
