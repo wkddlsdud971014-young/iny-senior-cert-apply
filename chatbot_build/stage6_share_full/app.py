@@ -13,7 +13,10 @@ import os
 from pathlib import Path
 import gradio as gr
 from gemini import GeminiClient
-from rag import answer_question, rebuild_index, get_faq_table, add_faq_entry, delete_faq_entry, get_faq_count
+from rag import (
+    answer_question, rebuild_index, get_faq_table, add_faq_entry, delete_faq_entry, get_faq_count,
+    get_synonyms_table, add_synonym, delete_synonym,
+)
 
 
 def load_env():
@@ -111,6 +114,39 @@ with gr.Blocks(title="MP1 - 자격증 FAQ 챗봇 (완성형)") as demo:
         add_btn.click(do_add, [cert_input, cat_input, title_input, reply_input], [add_msg, faq_table])
         delete_btn.click(do_delete, [delete_id], [delete_msg, faq_table])
         search_btn.click(do_search, [search_input], [faq_table])
+
+    # ── 동의어 관리 탭 (Stage 3에서 가져와 합침) ───────────────────
+    # TF-IDF 는 데이터에 있는 말만 안다. "포크레인" 처럼 상담 기록에 실제로
+    # 나오는 말은 알아서 찾지만, "요보사" 처럼 데이터에 없는 줄임말은 못 찾는다.
+    # 검색 방식으로는 못 푸는 문제라 사람이 직접 말을 등록해 줘야 한다.
+    with gr.Tab("동의어 관리"):
+        gr.Markdown(
+            "## 동의어 관리\n"
+            "줄임말·통칭을 정식 명칭으로 바꿔서 검색합니다. "
+            "TF-IDF 가 모르는 말(데이터에 한 번도 안 나오는 말)을 여기서 알려줍니다."
+        )
+
+        with gr.Row():
+            syn_short = gr.Textbox(label="줄임말 / 통칭", placeholder="예: 요보사")
+            syn_full = gr.Textbox(label="정식 명칭", placeholder="예: 요양보호사")
+        syn_add_btn = gr.Button("동의어 추가", variant="primary")
+        syn_msg = gr.Textbox(label="결과", interactive=False)
+
+        gr.Markdown("---")
+
+        with gr.Row():
+            syn_del = gr.Textbox(label="삭제할 줄임말", placeholder="예: 요보사")
+            syn_del_btn = gr.Button("삭제", variant="stop")
+        syn_del_msg = gr.Textbox(label="결과", interactive=False)
+
+        syn_table = gr.Dataframe(
+            value=get_synonyms_table(),
+            headers=["줄임말", "정식 명칭"],
+            label="동의어 목록",
+        )
+
+        syn_add_btn.click(add_synonym, [syn_short, syn_full], [syn_msg, syn_table])
+        syn_del_btn.click(delete_synonym, [syn_del], [syn_del_msg, syn_table])
 
 
 if __name__ == "__main__":

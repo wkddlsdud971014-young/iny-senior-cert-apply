@@ -16,7 +16,66 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 ROOT = Path(__file__).resolve().parent
 DATA_PATH = ROOT.parent / "data" / "faq_combined.jsonl"
+SYNONYMS_PATH = ROOT / "synonyms.json"
 UNKNOWN = "제공된 FAQ에서 확인할 수 없는 내용입니다."
+
+
+# ─────────────────────────────────────────────────────────────
+# 동의어 사전 (Stage 3에서 가져와 합침)
+#
+# TF-IDF 는 데이터에 있는 말만 안다. "포크레인" 은 상담 기록에 실제로
+# 나오는 말이라 TF-IDF 가 알아서 찾지만, "요보사" 처럼 데이터에 한 번도
+# 안 나오는 줄임말은 사전에 없는 단어라 통째로 버려진다.
+# 검색 방식을 바꿔서 풀 수 있는 문제가 아니라, 말을 미리 바꿔줘야 한다.
+# ─────────────────────────────────────────────────────────────
+def _load_synonyms():
+    if not SYNONYMS_PATH.is_file():
+        return {}
+    return json.loads(SYNONYMS_PATH.read_text(encoding="utf-8"))
+
+
+SYNONYMS = _load_synonyms()
+
+
+def _save_synonyms():
+    SYNONYMS_PATH.write_text(
+        json.dumps(SYNONYMS, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+
+def reload_synonyms():
+    global SYNONYMS
+    SYNONYMS = _load_synonyms()
+
+
+def get_synonyms_table():
+    return [[short, full] for short, full in sorted(SYNONYMS.items())]
+
+
+def add_synonym(short, full):
+    short, full = (short or "").strip(), (full or "").strip()
+    if not short or not full:
+        return "줄임말과 정식 명칭을 모두 입력하세요.", get_synonyms_table()
+    SYNONYMS[short] = full
+    _save_synonyms()
+    return f"추가됨: {short} → {full}", get_synonyms_table()
+
+
+def delete_synonym(short):
+    short = (short or "").strip()
+    if short not in SYNONYMS:
+        return f"'{short}' 은(는) 없습니다.", get_synonyms_table()
+    full = SYNONYMS.pop(short)
+    _save_synonyms()
+    return f"삭제됨: {short} → {full}", get_synonyms_table()
+
+
+def _expand_synonyms(text):
+    """질문 속 줄임말을 정식 명칭으로 바꾼다. 검색 직전에 한 번 부른다."""
+    for short, full in SYNONYMS.items():
+        if short in text:
+            text = text.replace(short, full)
+    return text
 
 
 def _load_jsonl(path):
@@ -92,6 +151,8 @@ def delete_faq_entry(faq_id):
 
 
 def retrieve(question, top_k=3, min_score=0.05):
+    # 줄임말을 먼저 정식 명칭으로 바꾼 뒤 TF-IDF 로 넘긴다.
+    question = _expand_synonyms(question)
     q_vec = vectorizer.transform([question])
     scores = cosine_similarity(q_vec, tfidf_matrix).flatten()
     top_indices = scores.argsort()[::-1][:top_k]
