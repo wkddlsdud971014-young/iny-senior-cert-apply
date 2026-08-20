@@ -149,10 +149,37 @@ function fromOurs(r) {
   };
 }
 
+// ---------- 표를 끝까지 가져오기 ----------
+// 2026-08-20 추가.
+//
+// Supabase 는 한 번에 1,000행까지만 돌려줍니다.
+// `.limit(2000)` 이라고 적어도 서버가 1,000에서 자릅니다. 그런데 **오류가 나지 않습니다.**
+// 그래서 접수가 1,000건을 넘으면 어드민에 일부가 조용히 안 보이게 됩니다.
+// 직원은 "1,000건이 전부"라고 믿게 됩니다.
+//
+// 지금 integrated_applications 는 정확히 1,000건이라 아직 잘리지 않았지만,
+// 한 건만 늘어도 잘립니다. 경계선에 있습니다.
+//
+// 1,000건씩 끊어서 더 없을 때까지 가져옵니다.
+const PAGE = 1000;
+
+async function fetchAll(table) {
+  const rows = [];
+  for (let from = 0; ; from += PAGE) {
+    const r = await db.from(table).select("*").order("id").range(from, from + PAGE - 1);
+    if (r.error) return { data: null, error: r.error };
+    const got = r.data || [];
+    rows.push(...got);
+    if (got.length < PAGE) break;   // 마지막 쪽
+    if (from > 200000) break;       // 만일을 위한 멈춤 장치
+  }
+  return { data: rows, error: null };
+}
+
 async function load() {
   $("msg").textContent = "불러오는 중입니다...";
-  const a = await db.from("integrated_applications").select("*").order("id").limit(2000);
-  const b = await db.from("applications").select("*").order("id");
+  const a = await fetchAll("integrated_applications");
+  const b = await fetchAll("applications");
   if (a.error) { $("msg").textContent = "불러오지 못했습니다. (" + a.error.message + ")"; return; }
   const ours = (b.data || []).map(fromOurs);
   // 최신 접수가 맨 위로 오게 접수일시 내림차순으로 놓습니다.
