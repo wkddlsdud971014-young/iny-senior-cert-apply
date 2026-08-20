@@ -90,9 +90,90 @@ def _load_jsonl(path):
 FAQ = _load_jsonl(DATA_PATH)
 
 
+# 자격증명과 분류를 검색용 글자에 몇 번 넣을지. (2026-08-20 추가)
+#
+# exchanges 를 읽게 하면서 문서가 길어졌다. 그러자 자격증명 한 낱말이
+# 대화 수십 낱말 속에 묻혀 힘을 잃었다. "공인중개사 환불 규정"을 물었는데
+# 손해평가사 환불 문서가 1등으로 올라오는 식이다.
+# (내용은 자격증 공통이라 답은 맞았지만 출처가 엉뚱해진다)
+#
+# 자격증명을 여러 번 적어 두면 그 낱말의 비중이 올라간다.
+# 8개 자격증 × 3개 주제 = 24문항으로 재어 정한 값이다.
+#   1번 17/24(70%)  2번 18/24  3번 18/24  4번 20/24  5번 24/24(100%)  7번 24/24
+# 5번에서 전부 맞고 그 이상은 더 나아지지 않아 5로 정했다.
+CERT_WEIGHT = 5
+
+
+def _question_of(r):
+    """
+    묻는 쪽 글을 꺼낸다. 출처에 따라 칸 이름이 다르다. (2026-08-20 추가)
+
+    게시판(qna_board) : title / body 에 들어 있다
+    전화(phone)      : opening 과 exchanges[].caller 에 들어 있다
+    """
+    if r.get("body") or r.get("title"):
+        return f"{r.get('title', '')} {r.get('body', '')}".strip()
+    parts = [r.get("opening", "")]
+    parts += [x.get("caller", "") for x in r.get("exchanges", [])]
+    return " ".join(p for p in parts if p).strip()
+
+
+def _answer_of(r):
+    """
+    답한 쪽 글을 꺼낸다. Gemini 에게 넘길 근거가 이것이다.
+
+    게시판 : reply
+    전화   : exchanges[].staff 를 이어 붙인다
+    """
+    if r.get("reply"):
+        return r["reply"]
+    said = [x.get("staff", "") for x in r.get("exchanges", [])]
+    return " ".join(s for s in said if s).strip()
+
+
+def _label_of(r):
+    """
+    출처에 보여 줄 이름. (2026-08-20 추가)
+
+    전화 상담 기록에는 제목이 없어 그대로 두면 출처가 "손해평가사 - ?" 로 나온다.
+    제목이 없으면 분류와 첫 질문을 대신 보여 준다.
+    """
+    if r.get("title"):
+        return r["title"]
+    first = ""
+    for x in r.get("exchanges", []):
+        if x.get("caller"):
+            first = x["caller"]
+            break
+    cat = r.get("category", "")
+    if cat and first:
+        return f"{cat} · 전화 상담 \"{first[:24]}\""
+    return cat or "전화 상담"
+
+
 def _build_docs(faq_list):
+    """
+    검색용 글자를 만든다.
+
+    2026-08-20 수정: 전에는 title/body/reply 만 이어 붙였다.
+    그런데 4,705건 중 3,502건(74%)이 전화 상담 기록이고, 그쪽에는 그 칸들이 없다.
+    내용이 exchanges 안에 들어 있기 때문이다.
+    그래서 실제로 만들어지던 글자가 이랬다.
+
+        '공인중개사 HC 환불   '        ← 자격증명과 카테고리뿐
+
+    내용이 통째로 빠지니 두 가지 일이 벌어졌다.
+      1) 답이 데이터에 있는데도 검색에 안 걸린다
+      2) 문서가 짧아져 코사인 유사도가 오히려 높게 나온다
+         ("공인중개사 환불 규정" 질문에 유사도 0.77 인데 근거가 비어 UNKNOWN 이 나왔다)
+
+    내용이 없어서 유사도가 높아지고, 내용이 없어서 답을 못 하는 상태였다.
+    이제 출처와 상관없이 묻는 글과 답한 글을 모두 넣는다.
+    """
     return [
-        f"{r.get('cert', '')} {r.get('category', '')} {r.get('title', '')} {r.get('body', '')} {r.get('reply', '')}"
+        f"{(str(r.get('cert', '')) + ' ') * CERT_WEIGHT}"
+        f"{(str(r.get('category', '')) + ' ') * CERT_WEIGHT}"
+        f"{_question_of(r)} {_answer_of(r)}"
         for r in faq_list
     ]
 
@@ -160,15 +241,31 @@ def retrieve(question, top_k=3, min_score=0.05):
 
 
 def build_prompt(question, document):
+    # 근거가 어느 자격증 것인지 반드시 밝힌다. (2026-08-20 추가)
+    #
+    # 전화 상담 기록에는 자격증명이 본문에 안 나온다. 통화하는 두 사람은
+    # 무슨 자격증인지 이미 알고 있어 굳이 말하지 않기 때문이다.
+    #   "1차 응시료는 20,000원이에요. 2차는 별도로 33,000원을 내셔야 해요."
+    #
+    # 이 문장만 넘기면 Gemini 는 그것이 어느 자격증 요금인지 알 수 없다.
+    # 실제로 "미용사 시험비"(우리가 다루지 않는 자격증)를 물었을 때
+    # 손해평가사 요금을 미용사 요금이라고 안내했다.
+    #
+    # 그래서 근거 앞에 자격증명을 붙이고, 질문과 다르면 답하지 말라고 못 박는다.
+    cert = document.get("cert", "") or "확인되지 않음"
     return f"""당신은 자격증 시험 접수 FAQ 상담원입니다.
 아래 근거 안에서만 답하세요. 근거에 없는 내용을 만들지 마세요.
 근거로 답할 수 없으면 정확히 UNKNOWN이라고 답하세요.
+
+이 근거는 '{cert}' 에 대한 것입니다.
+질문이 다른 자격증에 대한 것이면 정확히 UNKNOWN이라고 답하세요.
+근거에 적힌 금액·날짜를 다른 자격증의 것으로 옮겨 말하지 마세요.
 
 [질문]
 {question}
 
 [근거]
-{document.get('reply', document.get('text', ''))}
+{_answer_of(document) or document.get('text', '')}
 
 한국어 두 문장 이내로 답하세요."""
 
@@ -187,6 +284,6 @@ def answer_question(question, generate):
     return {
         "status": "ANSWERED",
         "answer": generated,
-        "source": f"{best_doc.get('cert', '?')} - {best_doc.get('title', '?')}",
+        "source": f"{best_doc.get('cert', '?')} - {_label_of(best_doc)}",
         "score": best_score,
     }
