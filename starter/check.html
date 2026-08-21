@@ -79,6 +79,7 @@
 <a class="float-chat" href="faq.html">💬 물어보기</a>
 
 <script src="certs.js"></script>
+<script src="phone.js"></script>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -103,14 +104,17 @@ function say(t)    { msg.textContent = t; msg.className = "warn"; }
 function clearSay(){ msg.textContent = "";  msg.className = "";     }
 
 
-// ----- 연락처 하이픈 -----
-function hyphenPhone(v) {
-  const d = String(v == null ? "" : v).replace(/[^0-9]/g, "");
-  if (d.length <= 3)  return d;
-  if (d.length <= 7)  return d.slice(0,3) + "-" + d.slice(3);
-  if (d.length <= 10) return d.slice(0,3) + "-" + d.slice(3,6) + "-" + d.slice(6);
-  return d.slice(0,3) + "-" + d.slice(3,7) + "-" + d.slice(7,11);
-}
+// ----- 연락처 -----
+// 하이픈 붙이기(hyphenPhone)는 phone.js 에 있습니다. 접수 화면과 같은 파일입니다.
+//
+// 전에는 이 화면이 하이픈 함수를 따로 갖고 있었고 02 지역번호를 몰랐습니다.
+// 그래서 접수하실 때는 02-123-4567 로 보이던 번호가 여기서는 021-234-567 로
+// 보였습니다. 같은 번호인데 화면마다 달리 보이면 "내가 잘못 넣었나" 하십니다.
+//
+// 다만 여기서는 접수 화면만큼 깐깐하게 막지 않습니다.
+// 이 화면은 값을 저장하는 곳이 아니라 이미 저장된 것을 찾아 드리는 곳입니다.
+// 예전에 전화로 접수해 드린 분의 번호는 지금 규칙에 안 맞을 수도 있는데,
+// 규칙에 맞지 않는다고 찾기를 막으면 본인 접수를 못 보십니다.
 
 
 // ----- 다음에 하실 차례를 표시 (접수 화면과 같은 방식) -----
@@ -146,8 +150,10 @@ nameBox.addEventListener("keydown", function (e) {
 phoneBox.addEventListener("input", function () {
   phoneBox.value = hyphenPhone(phoneBox.value);
   updateNext();
-  // 번호를 다 넣으시면 찾기 버튼으로
-  if (phoneBox.value.replace(/[^0-9]/g,"").length === 11) setTimeout(function(){ goTo(btn); }, 250);
+  // 번호를 다 넣으시면 찾기 버튼으로.
+  // 전에는 11자리인지만 셌습니다. 그러면 02-1234-5678(10자리)로 접수하신 분은
+  // 다 넣으셔도 버튼으로 넘어가지 않았습니다. 이제 번호대별 자릿수로 봅니다.
+  if (phoneDone(phoneBox.value)) setTimeout(function(){ goTo(btn); }, 250);
 });
 [nameBox, phoneBox].forEach(function (el) {
   el.addEventListener("input", updateNext);

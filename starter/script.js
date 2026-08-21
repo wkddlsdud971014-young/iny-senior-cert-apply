@@ -67,23 +67,10 @@ let pickedFee = null;   // 고른 자격증 응시료
 })();
 
 
-// ----- 2. 연락처 하이픈 -----
-// 숫자만 넣으셔도 010-1234-5678 모양으로 보이게 합니다.
-// 전화번호 모양이 아니면(자릿수가 안 맞으면) 손대지 않고 그대로 둡니다.
-
-function hyphenPhone(value) {
-  const d = String(value == null ? "" : value).replace(/[^0-9]/g, "");
-  if (d.startsWith("02")) {
-    if (d.length <= 2)  return d;
-    if (d.length <= 5)  return d.slice(0, 2) + "-" + d.slice(2);
-    if (d.length <= 9)  return d.slice(0, 2) + "-" + d.slice(2, 5) + "-" + d.slice(5);
-    return d.slice(0, 2) + "-" + d.slice(2, 6) + "-" + d.slice(6, 10);
-  }
-  if (d.length <= 3)  return d;
-  if (d.length <= 7)  return d.slice(0, 3) + "-" + d.slice(3);
-  if (d.length <= 10) return d.slice(0, 3) + "-" + d.slice(3, 6) + "-" + d.slice(6);
-  return d.slice(0, 3) + "-" + d.slice(3, 7) + "-" + d.slice(7, 11);
-}
+// ----- 2. 연락처 -----
+// 하이픈 붙이기(hyphenPhone) 와 검사(phoneCheck) 는 phone.js 에 있습니다.
+// 접수 확인 화면(check.html)도 같은 파일을 씁니다. 두 화면의 판정이 어긋나지
+// 않게 하려고 한 곳으로 모았습니다.
 
 
 // ----- 3. 다음에 하실 차례를 표시 -----
@@ -121,39 +108,172 @@ function updateNext() {
 // 화면에서만 봅니다. DB 에는 제약을 걸지 않습니다.
 // 원본 데이터를 거부하지 않는다는 원칙은 그대로입니다.
 
-function checkName(v) {
-  const t = (v || "").trim();
-  if (t === "")        return "이름을 넣어 주십시오.";
-  if (t.length < 2)    return "이름을 두 글자 이상 넣어 주십시오.";
-  if (t.length > 30)   return "이름이 너무 깁니다. 30자 안으로 넣어 주십시오.";
+// 연락처(phoneCheck)와 같은 꼴로 돌려줍니다. { code, message }
+//   empty  아직 안 넣으심
+//   short  아직 모자람   ← 넣고 계시는 중일 수 있어 바로 다그치지 않습니다
+//   long   너무 김
+//   format 이름에 없는 글자가 섞임
+function nameCheck(v) {
+  const t  = (v || "").trim();
+  const no = function (code, message) { return { code: code, message: message }; };
+
+  if (t === "")      return no("empty", "이름을 넣어 주십시오.");
+  if (t.length < 2)  return no("short", "이름을 두 글자 이상 넣어 주십시오.");
+  if (t.length > 30) return no("long",  "이름이 너무 깁니다. 30자 안으로 넣어 주십시오.");
   // 한글(완성된 글자)과 영문, 띄어쓰기만 받습니다.
   // "ㅎ" 같은 자음 하나, 숫자, 기호는 이름이 아닙니다.
   if (!/^[가-힣a-zA-Z\s]+$/.test(t))
-    return "이름에는 한글이나 영문만 넣어 주십시오. 숫자나 기호는 넣지 마십시오.";
-  return "";
+    return no("format", "이름에는 한글이나 영문만 넣어 주십시오. 숫자나 기호는 넣지 마십시오.");
+  return no("", "");
 }
 
-function checkPhone(v) {
-  const d = (v || "").replace(/[^0-9]/g, "");
-  if (d === "")                       return "연락처를 넣어 주십시오.";
-  if (!d.startsWith("0"))             return "연락처는 0으로 시작해야 합니다. 다시 확인해 주십시오.";
-  if (d.length < 10 || d.length > 11) return "연락처 자릿수가 맞지 않습니다. 숫자 10자리나 11자리로 넣어 주십시오.";
-  if (/^(\d)\1+$/.test(d))            return "연락처를 다시 확인해 주십시오.";
-  return "";
-}
+// 오류 문구만 필요할 때.
+function checkName(v) { return nameCheck(v).message; }
 
-// 칸 바로 아래에 안내를 띄웁니다.
-function showFieldError(fieldId, errId, box, text) {
-  const f = document.getElementById(fieldId);
-  const e = document.getElementById(errId);
-  if (!e) return;
-  if (text) {
-    e.textContent = text; e.hidden = false; f.classList.add("bad");
-    box.focus({ preventScroll: true });
-    f.scrollIntoView({ behavior: "smooth", block: "center" });
-  } else {
-    e.hidden = true; f.classList.remove("bad");
+// 연락처 검사는 phone.js 의 phoneCheck 하나만 씁니다.
+
+
+// ----- 칸의 네 가지 상태 -----
+// 2026-08-21 추가.
+//
+// 전에는 칸마다 안내가 제각각이었습니다.
+//   이름 칸  — "다 넣으시면 엔터를 누르십시오" 가 다 넣으신 뒤에도 남아 있었습니다.
+//   연락처 칸 — 안내가 아예 없어, 무엇을 어떻게 넣어야 하는지 알 수 없었습니다.
+//   동의     — 오류가 화면 아래 한 곳에만 떠서 어느 칸이 문제인지 찾아 내려가셔야 했습니다.
+//
+// 그래서 모든 칸을 아래 네 가지 상태 가운데 하나로 두고, 상태마다 할 말을 정했습니다.
+//   empty   아직 안 넣으심      → 무엇을 넣는 곳인지
+//   typing  넣고 계심           → 얼마나 남았는지 · 다 넣으면 무엇을 하는지
+//   ok      제대로 넣으심        → 무엇으로 접수되는지 (확인시켜 드림)
+//   bad     틀리게 넣으심        → 무엇이 틀렸고 어떻게 고치는지
+//
+// 규칙 두 가지
+//   1. 한 칸에는 한 줄만 보입니다. 안내와 오류가 같이 떠 있지 않습니다.
+//   2. 다 넣으신 칸에는 시키는 말이 남지 않습니다.
+
+const FIELD_TEXT = {
+  name: {
+    empty:  "주민등록증에 적힌 이름 그대로 넣어 주십시오.",
+    typing: "다 넣으시면 <b>엔터</b>를 누르십시오.",
+    ok:     function (v) { return "✓ " + v.trim() + " 님으로 접수합니다."; },
+  },
+  phone: {
+    empty:  "숫자만 넣으셔도 됩니다. 사이의 줄(-)은 저희가 넣어 드립니다.",
+    typing: function (v) {
+      const rule = phoneRule(v);
+      const n    = phoneDigits(v).length;
+      if (!rule) return "휴대폰은 010, 집 전화는 02 나 031 같은 지역번호부터 넣어 주십시오.";
+      return "지금 " + n + "자리입니다. " + rule.label + "는 " + rule.range + "입니다.";
+    },
+    ok:     function (v) { return "✓ " + v + " 로 연락드립니다."; },
+  },
+  note: {
+    // 선택사항입니다. 안 쓰셔도 되는 칸에서 "넣으십시오"라고 하면 안 됩니다.
+    empty:  "안 쓰셔도 접수됩니다. 하실 말씀이 있으실 때만 적어 주십시오.",
+    typing: "다 쓰시면 아래 <b>동의</b>로 내려가십시오.",
+    ok:     function () { return "✓ 적어 주셨습니다. 담당자가 함께 봅니다."; },
+  },
+  agree: {
+    empty:  "아래 두 가지에 <b>모두 체크</b>하셔야 접수가 됩니다.",
+    typing: "한 가지 더 남았습니다.",
+    ok:     function () { return "✓ 두 가지 모두 동의하셨습니다."; },
+  },
+};
+
+// 칸 하나를 한 상태로 맞춥니다. 셋 가운데 한 줄만 보이게 합니다.
+function setFieldState(key, state, value) {
+  const box  = document.getElementById(key === "agree" ? "agree-box" : "f-" + key);
+  const err  = document.getElementById("e-" + key);
+  const ok   = document.getElementById("k-" + key);
+  const help = document.getElementById("h-" + key);
+  const text = FIELD_TEXT[key];
+
+  const set = function (el, html) {
+    if (!el) return;
+    if (html == null) { el.hidden = true; return; }
+    el.innerHTML = html; el.hidden = false;
+  };
+
+  if (state === "bad") {
+    set(err, value); set(ok, null); set(help, null);
+    if (box) box.classList.add("bad");
+    return;
   }
+  if (box) box.classList.remove("bad");
+
+  if (state === "ok") { set(err, null); set(ok, text.ok(value)); set(help, null); return; }
+
+  const line = typeof text[state] === "function" ? text[state](value) : text[state];
+  set(err, null); set(ok, null); set(help, line);
+}
+
+
+// ----- 지금 값을 보고 상태를 정하기 -----
+//
+// 한 번 틀리신 칸은 표시해 둡니다.
+// 전에는 오류가 뜬 뒤 한 글자만 지우셔도 오류 표시가 사라졌습니다.
+// 아직 틀린 번호인데 화면은 멀쩡해 보이고, 보내기를 누르시면 다시 막혔습니다.
+// 한 번 틀린 칸은 제대로 고치실 때까지 계속 알려 드립니다.
+const wrong = { name: false, phone: false, agree: false };
+
+const BOXES = { name: nameBox, phone: phoneBox, note: noteBox };
+
+// force 가 참이면 아직 넣고 계셔도 모자란 것까지 알려 드립니다.
+// 엔터를 누르셨을 때 · 칸을 떠나실 때 · 보내기를 누르셨을 때만 참입니다.
+function refreshField(key, force) {
+  if (key === "note") {
+    // 선택사항이라 검사하지 않습니다. 안 쓰셔도 되는 칸을 틀렸다고 하면 안 됩니다.
+    const v = noteBox.value;
+    if (v.trim() === "") { setFieldState("note", "empty"); return { code: "", message: "" }; }
+    setFieldState("note", document.activeElement === noteBox ? "typing" : "ok", v);
+    return { code: "", message: "" };
+  }
+
+  const v   = BOXES[key].value;
+  const bad = key === "name" ? nameCheck(v) : phoneCheck(v);
+
+  if (!bad.code) { wrong[key] = false; setFieldState(key, "ok", v); return bad; }
+
+  // empty 와 short 는 "아직 넣고 계시는 중"일 수 있습니다.
+  // 이미 한 번 틀리셨거나(wrong) 다 넣었다고 하신 뒤(force)에만 오류로 봅니다.
+  // 나머지(없는 번호대 · 이름에 숫자)는 더 넣으셔도 맞아지지 않으니 바로 알려 드립니다.
+  const soft = (bad.code === "empty" || bad.code === "short") && !force && !wrong[key];
+  if (soft) {
+    setFieldState(key, bad.code === "empty" ? "empty" : "typing", v);
+    return bad;
+  }
+
+  wrong[key] = true;
+  setFieldState(key, "bad", bad.message);
+  return bad;
+}
+
+// 동의 두 가지도 같은 네 가지 상태를 씁니다.
+function refreshAgree(force) {
+  const p = !!(agP && agP.checked), t = !!(agT && agT.checked);
+
+  if (p && t) { wrong.agree = false; setFieldState("agree", "ok"); return true; }
+
+  if (force || wrong.agree) {
+    wrong.agree = true;
+    setFieldState("agree", "bad",
+      !p && !t ? "아래 두 가지에 모두 체크해 주십시오."
+      : p      ? "이용약관에도 체크해 주십시오."
+               : "개인정보 수집 · 이용에도 체크해 주십시오.");
+    return false;
+  }
+
+  setFieldState("agree", (!p && !t) ? "empty" : "typing");
+  return false;
+}
+
+// 틀린 칸으로 데려다 드립니다. 보내기를 누르셨을 때만 씁니다.
+// 화면 아래 버튼 옆에만 띄우면 위에 있는 칸이 문제일 때 못 보십니다.
+function goToProblem(key) {
+  const box = BOXES[key] || (agP && !agP.checked ? agP : agT);
+  const el  = document.getElementById(key === "agree" ? "agree-box" : "f-" + key);
+  if (box) box.focus({ preventScroll: true });
+  if (el)  el.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 
@@ -172,21 +292,21 @@ form.addEventListener("submit", async function (event) {
   clearMessage();
 
   // 화면에서 안내만 합니다. DB에는 이런 제약을 걸지 않았습니다.
-  const nameErr = checkName(nameBox.value);
-  if (nameErr) { showFieldError("f-name", "e-name", nameBox, nameErr); return; }
-  showFieldError("f-name", "e-name", nameBox, "");
+  //
+  // 세 칸을 모두 본 뒤 위에서부터 첫 번째 문제로 데려다 드립니다.
+  // 한 칸씩 막으면 고치고 누르고, 또 막히고 고치기를 되풀이하셔야 합니다.
+  // 세 칸의 상태가 한 번에 보여야 몇 군데가 남았는지 아십니다.
+  const bads = [];
+  if (refreshField("name",  true).code) bads.push("name");
+  if (refreshField("phone", true).code) bads.push("phone");
+  if (!refreshAgree(true))              bads.push("agree");
+  refreshField("note");
 
-  const phoneErr = checkPhone(phoneBox.value);
-  if (phoneErr) { showFieldError("f-phone", "e-phone", phoneBox, phoneErr); return; }
-  showFieldError("f-phone", "e-phone", phoneBox, "");
-  if (agP && !agP.checked) {
-    showMessage("개인정보 수집 · 이용에 동의해 주십시오.");
-    agP.focus();
-    return;
-  }
-  if (agT && !agT.checked) {
-    showMessage("이용약관에 동의해 주십시오.");
-    agT.focus();
+  if (bads.length) {
+    showMessage(bads.length === 1
+      ? "한 곳을 더 봐 주십시오. 아래에 빨갛게 표시해 두었습니다."
+      : bads.length + "곳을 더 봐 주십시오. 아래에 빨갛게 표시해 두었습니다.");
+    goToProblem(bads[0]);
     return;
   }
 
@@ -205,6 +325,21 @@ form.addEventListener("submit", async function (event) {
     //   1 문의 → 2 접수 → 3 확인(담당자) → 4 완료(두두넷 원서접수)
     staff_app_status: "접수"
   };
+
+  // 보내기 직전에 한 번 더 봅니다.
+  // 위에서 본 것은 "칸에 든 값"이고 여기서 보는 것은 "실제로 보낼 값"입니다.
+  // 둘 사이에 자동완성이나 붙여넣기가 끼어들 수 있어, 나가는 값을 기준으로 다시 셉니다.
+  // 잘못된 값이 원본으로 들어가면 나중에는 고칠 방법이 없습니다.
+  // (supabase.sql — update/delete 정책을 일부러 만들지 않았습니다)
+  const lastNameErr  = checkName(row.name);
+  const lastPhoneErr = checkPhone(row.phone);
+  if (lastNameErr || lastPhoneErr) {
+    sendBtn.disabled = false;
+    sendBtn.textContent = "신청서 보내기";
+    if (lastNameErr) showFieldError("f-name", "e-name", nameBox, lastNameErr);
+    else             showFieldError("f-phone", "e-phone", phoneBox, lastPhoneErr);
+    return;
+  }
 
   const { data, error } = await db
     .from("applications")
@@ -291,35 +426,46 @@ function isTypingHangul(e) {
 nameBox.addEventListener("keydown", function (e) {
   if (e.key !== "Enter" || isTypingHangul(e)) return;
   e.preventDefault();
-  const err = checkName(nameBox.value);
-  if (err) { showFieldError("f-name", "e-name", nameBox, err); return; }
-  showFieldError("f-name", "e-name", nameBox, "");
+  if (refreshField("name", true).code) { nameBox.focus({ preventScroll: true }); return; }
   goTo(phoneBox);
 });
 
 // 연락처 칸에서 엔터 → 동의로
+// 전에는 검사 없이 그냥 넘어갔습니다. 자릿수가 모자란 번호가 여기로 빠져나갔습니다.
 phoneBox.addEventListener("keydown", function (e) {
   if (e.key !== "Enter" || isTypingHangul(e)) return;
   e.preventDefault();
+  if (refreshField("phone", true).code) { phoneBox.focus({ preventScroll: true }); return; }
   goTo(agP);
 });
 
 phoneBox.addEventListener("input", function () {
   const before = phoneBox.value;
+  const over   = phoneOverflow(before);          // 자릿수를 넘겨 넣으신 숫자 개수
   phoneBox.value = hyphenPhone(before);
 
   // 숫자가 아닌 글자를 넣으시면 왜 안 써지는지 알려 드립니다.
   // 그냥 지워 버리면 "왜 안 되지?" 하고 헤매십니다.
   if (/[^0-9\-\s]/.test(before)) {
-    showFieldError("f-phone", "e-phone", phoneBox, "연락처에는 숫자만 넣어 주십시오.");
-  } else {
-    document.getElementById("e-phone").hidden = true;
-    document.getElementById("f-phone").classList.remove("bad");
+    wrong.phone = true;
+    setFieldState("phone", "bad", "연락처에는 숫자만 넣어 주십시오.");
+    return;
   }
 
-  // 번호를 다 넣으시면(11자리) 저절로 동의 칸으로 넘어갑니다.
-  const digits = phoneBox.value.replace(/[^0-9]/g, "");
-  if (digits.length === 11) setTimeout(function () { goTo(agP); }, 250);
+  // 자릿수를 넘기면 더 안 들어갑니다. 전에는 말없이 사라져서
+  // 다 넣으신 줄 알고 그대로 넘어가셨습니다.
+  if (over > 0) {
+    // 틀린 것으로 세지 않습니다. 앞 11자리는 제대로 넣으셨으니까요.
+    setFieldState("phone", "bad",
+      "숫자를 다 넣으셨습니다. 더 넣으신 " + over + "자는 들어가지 않습니다.");
+    return;
+  }
+
+  // 번호를 제대로 다 넣으시면 저절로 동의 칸으로 넘어갑니다.
+  // 전에는 11자리이기만 하면 넘어갔습니다. 이제는 검사를 지나야 넘어갑니다.
+  if (!refreshField("phone", false).code) setTimeout(function () {
+    if (document.activeElement === phoneBox) goTo(agP);
+  }, 250);
 });
 
 // 첫 번째 동의에 체크하시면 두 번째로
@@ -330,14 +476,24 @@ if (agP) agP.addEventListener("change", function () {
 if (agT) agT.addEventListener("change", function () {
   if (agT.checked && agP && agP.checked) setTimeout(function () { goTo(sendBtn); }, 150);
 });
-nameBox.addEventListener("input", function () {
-  if (!checkName(nameBox.value)) showFieldError("f-name", "e-name", nameBox, "");
+
+// 글자를 넣으실 때마다 그 칸의 상태를 다시 맞춥니다.
+// 칸을 떠나실 때는 모자란 것까지 알려 드립니다.
+// 마우스로 다음 칸을 눌러 건너뛰고 가시는 분이 계셔서입니다.
+["name", "phone", "note"].forEach(function (key) {
+  const el = BOXES[key];
+  el.addEventListener("input", function () { if (key !== "phone") refreshField(key, false); updateNext(); });
+  el.addEventListener("focus", function () { refreshField(key, false); updateNext(); });
+  el.addEventListener("blur",  function () {
+    refreshField(key, true);
+    setTimeout(updateNext, 0);
+  });
+});
+[agP, agT].forEach(function (c) {
+  if (c) c.addEventListener("change", function () { refreshAgree(false); updateNext(); });
 });
 
-[nameBox, phoneBox, noteBox].forEach(function (el) {
-  el.addEventListener("input", updateNext);
-  el.addEventListener("focus", updateNext);
-  el.addEventListener("blur", function () { setTimeout(updateNext, 0); });
-});
-[agP, agT].forEach(function (c) { if (c) c.addEventListener("change", updateNext); });
+// 화면을 여실 때 네 칸을 모두 "아직 안 넣으심" 상태로 놓습니다.
+["name", "phone", "note"].forEach(function (key) { refreshField(key, false); });
+refreshAgree(false);
 updateNext();

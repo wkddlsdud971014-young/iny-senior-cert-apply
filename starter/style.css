@@ -33,6 +33,8 @@
   --accent:     #BE5427;   /* 테라코타 — 강조, 현재 위치 */
   --accent-pale:#FAEADF;
 
+  --ok:         #2F6B4F;   /* 짙은 초록 — 제대로 넣으셨을 때 (배경 대비 5.6:1) */
+
   --line:       #E3D8C6;
   --gray:       #A99madeup;
 }
@@ -741,6 +743,21 @@ body.focus-mode .cert-zone.open { background: var(--card); }
 }
 .err[hidden] { display: none; }
 .field.bad input, .field.bad textarea { border-color: var(--accent); }
+
+/* 제대로 넣으셨을 때 —— 2026-08-21 추가.
+   전에는 "틀렸다"만 알려 드리고 "됐다"는 알려 드리지 않았습니다.
+   그래서 다 넣으신 뒤에도 "이게 맞나" 하고 다시 보셔야 했습니다.
+   오류처럼 상자로 두르지 않습니다. 잘된 것이 눈에 더 띄면 안 됩니다. */
+.ok {
+  margin: 10px 0 0; padding: 0 2px;
+  font-size: 18px; font-weight: 700; color: var(--ok, #2F6B4F);
+  line-height: 1.5;
+}
+.ok[hidden]   { display: none; }
+.help[hidden] { display: none; }
+
+/* 동의 상자도 다른 칸과 같이 틀린 곳이 눈에 보이게 합니다. */
+.agree-box.bad { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 16px; }
 
 
 /* =============================================================

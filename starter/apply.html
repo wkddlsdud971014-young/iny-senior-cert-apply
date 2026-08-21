@@ -53,28 +53,44 @@
          위에서 고르고 내려오시면 무엇을 골랐는지 잊으실 수 있어서입니다. -->
     <div id="summary" class="summary" hidden></div>
 
+    <!-- 칸마다 안내 줄이 셋입니다. 한 번에 하나만 보입니다. (script.js 의 setFieldState)
+           err  틀렸을 때
+           ok   제대로 넣으셨을 때
+           help 아직 넣기 전이거나 넣고 계실 때
+         전에는 help 하나뿐이라, 다 넣으신 뒤에도 "엔터를 누르십시오"가 남아 있었습니다. -->
+
     <div class="field" id="f-name">
       <label for="name">이름</label>
       <input id="name" type="text" autocomplete="name" maxlength="30">
-      <p class="err" id="e-name" hidden></p>
-      <p class="help">다 넣으시면 <b>엔터</b>를 누르십시오</p>
+      <p class="err"  id="e-name" hidden></p>
+      <p class="ok"   id="k-name" hidden></p>
+      <p class="help" id="h-name"></p>
     </div>
 
     <div class="field" id="f-phone">
       <label for="phone">연락처</label>
       <input id="phone" type="tel" autocomplete="tel">
-      <p class="err" id="e-phone" hidden></p>
+      <p class="err"  id="e-phone" hidden></p>
+      <p class="ok"   id="k-phone" hidden></p>
+      <p class="help" id="h-phone"></p>
     </div>
 
     <div class="field" id="f-note">
       <label for="note">더 하실 말씀 <span class="optional">(선택사항)</span></label>
       <textarea id="note"></textarea>
+      <p class="ok"   id="k-note" hidden></p>
+      <p class="help" id="h-note"></p>
     </div>
 
     <h2 id="agree"><span class="step-no">2</span>동의하실 내용</h2>
 
     <div class="agree-box" id="agree-box">
-    <p class="agree-lead">아래 두 가지에 <b>모두 체크</b>하셔야 접수가 됩니다.</p>
+    <!-- 동의도 다른 칸과 같은 네 가지 상태를 씁니다.
+         전에는 오류만 화면 아래 한 곳(#msg)에 떠서, 어느 칸이 문제인지
+         찾아 내려가셔야 했습니다. -->
+    <p class="err"  id="e-agree" hidden></p>
+    <p class="ok"   id="k-agree" hidden></p>
+    <p class="help agree-lead" id="h-agree">아래 두 가지에 <b>모두 체크</b>하셔야 접수가 됩니다.</p>
 
     <label class="agree">
       <input type="checkbox" id="ag-privacy">
@@ -137,6 +153,7 @@
 <a class="float-chat" href="faq.html">💬 물어보기</a>
 
 <script src="certs.js"></script>
+<script src="phone.js"></script>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="script.js"></script>
