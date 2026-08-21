@@ -36,9 +36,8 @@
   --ok:         #2F6B4F;   /* 짙은 초록 — 제대로 넣으셨을 때 (배경 대비 5.6:1) */
 
   --line:       #E3D8C6;
-  --gray:       #A99madeup;
+  --gray:       #9C8C7A;   /* 흐린 글씨 — 선택사항 표시 등 */
 }
-:root { --gray: #9C8C7A; }
 
 * { box-sizing: border-box; }
 
