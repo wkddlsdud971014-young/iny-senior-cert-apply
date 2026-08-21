@@ -129,27 +129,72 @@ function weighted(qt, doc, idf, aliases = {}) {
 // ---------- 정해진 답 ----------
 // "언제 거절할지"는 아래 규칙(코드)이 정합니다. 직원이 바꿀 수 없습니다.
 // "뭐라고 말할지"는 문서(faq_docs)에서 읽습니다. 직원이 바꿀 수 있습니다.
-//   900번 안내문 · 모를 때
-//   910번 안내문 · 실기 질문
 // 문서를 못 읽으면 아래 기본 문구를 씁니다.
+//
+// 2026-08-21 — 답변 단계를 셋으로 나눔.
+//
+// 그 전에는 두 갈래였습니다.
+//   근거 있음 → 답변 / 근거 없음 → 거절
+//
+// 사용성 테스트에서, 답할 수 있는 것까지 같이 끊기는 것을 보았습니다.
+//   "제가 합격할 수 있을까요?"     → "모르겠습니다"
+//   "시험 공부를 얼마나 해야 하나요?" → "모르겠습니다"
+// 합격 여부는 정말 알 수 없습니다. 하지만 시험 일정과 준비물은 저희가 압니다.
+// 어르신은 "여기서는 아무것도 안 알려주는구나" 하고 끊으셨습니다.
+//
+// 그래서 가운데 단계를 넣었습니다.
+//   답변 가능      근거가 있다             → 근거대로 답한다
+//   조건부 답변 가능 그건 못 하지만 이건 된다  → 못 하는 것 + 대신 되는 것을 같이 말한다
+//   답변 불가      저희 범위 밖이다         → 안 된다고만 말한다
+//
+// 지어내지 않는다는 원칙은 그대로입니다. 조건부도 새 사실을 만들지 않습니다.
+// 못 하는 것을 여전히 못 한다고 말하되, 할 수 있는 일을 덧붙일 뿐입니다.
 
-const DEFAULT_PRACTICAL =
-  "저희는 필기 접수만 도와드립니다. 실기는 저희가 안내하지 않습니다.";
-
-const DEFAULT_UNKNOWN =
-  "모르겠습니다. 저희가 확인하지 못한 내용이라 알려드릴 수 없습니다.\n" +
-  "짐작해서 말씀드리면 잘못 안내될 수 있어 답을 드리지 않습니다.";
+const LEVEL = { FULL: "답변 가능", PARTIAL: "조건부 답변 가능", NONE: "답변 불가" };
 
 const NOTICE_UNKNOWN   = "안내문 · 모를 때";
 const NOTICE_PRACTICAL = "안내문 · 실기 질문";
+const NOTICE_UNVERIFIED = "안내문 · 확인 못 한 항목";
+const NOTICE_PASS      = "안내문 · 합격 예측";
+const NOTICE_VENUE     = "안내문 · 시험장 시설";
+const NOTICE_MULTI     = "안내문 · 여러 자격증";
 
-function notice(docs, title, fallback) {
+const DEFAULTS = {
+  [NOTICE_UNKNOWN]:
+    "모르겠습니다. 저희가 확인하지 못한 내용이라 알려드릴 수 없습니다.\n" +
+    "짐작해서 말씀드리면 잘못 안내될 수 있어 답을 드리지 않습니다.",
+
+  [NOTICE_PRACTICAL]:
+    "실기는 저희가 안내해 드리지 않습니다.\n" +
+    "필기 접수는 저희가 도와드립니다. 필기에 대해 물어봐 주십시오.",
+
+  // 무엇을 확인 못 했는지는 앞에 한 줄로 붙습니다. (fixedAnswer 참고)
+  // 확인 못 한 여덟 가지에는 응시료도 있고 일정도 있어, 문서에는 공통된 말만 둡니다.
+  [NOTICE_UNVERIFIED]:
+    "짐작해서 말씀드리면 잘못 안내될 수 있어 알려드리지 않습니다.\n" +
+    "대신 어디서 접수하는지, 언제까지 접수하는지는 알려드릴 수 있습니다.",
+
+  [NOTICE_PASS]:
+    "합격 여부를 미리 판단해 드릴 수는 없습니다.\n" +
+    "대신 시험 일정이나 시험 당일 준비물은 알려드릴 수 있습니다.",
+
+  [NOTICE_VENUE]:
+    "시험장 안의 시설은 저희가 확인하지 못했습니다.\n" +
+    "시험장을 어디서 고르는지, 무엇을 가져가시는지는 알려드릴 수 있습니다.",
+
+  [NOTICE_MULTI]:
+    "여러 자격증을 함께 준비하시는 것이 좋을지는 저희가 판단해 드릴 수 없습니다.\n" +
+    "저희가 다루는 여덟 가지 가운데 궁금한 자격증의 접수 방법은 알려드릴 수 있습니다.",
+};
+
+function notice(docs, title) {
   const d = docs.find(x => x.title === title);
-  return (d && d.content && d.content.trim()) ? d.content.trim() : fallback;
+  return (d && d.content && d.content.trim()) ? d.content.trim() : (DEFAULTS[title] || "");
 }
 
 // 안내문은 근거 문서로 쓰지 않습니다. 답변 문구일 뿐이라서요.
-const isNotice = d => d.title === NOTICE_UNKNOWN || d.title === NOTICE_PRACTICAL;
+const NOTICE_TITLES = Object.keys(DEFAULTS);
+const isNotice = d => NOTICE_TITLES.includes(d.title);
 
 // "2차"는 넣지 않았습니다. 손해평가사·공인중개사는 필기를 1차, 그 다음을 2차라
 // 부르기 때문에, 2차를 실기로 보면 전문자격 질문까지 거절하게 됩니다.
@@ -169,13 +214,25 @@ const UNKNOWN_RULES = [
 ];
 
 // 발주서 95-98줄 — 저희가 답할 수 없는 질문
-const CANNOT_ANSWER = [
-  ["주차"],
-  ["붙", "합격할", "될까", "가능할까"],
-  ["다른 자격증", "같이 딸", "동시에"],
+//
+// 전에는 셋 다 "모르겠습니다"로 똑같이 끊었습니다.
+// 이제는 못 하는 것마다 대신 해 드릴 수 있는 일을 함께 말합니다.
+// 무엇을 못 하는지는 그대로입니다. 판단해 드리지 않는다는 원칙은 지킵니다.
+const PARTIAL_RULES = [
+  { words: ["주차"],                                    notice: NOTICE_VENUE, label: "시험장 시설" },
+  { words: ["붙", "합격할", "될까", "가능할까"],           notice: NOTICE_PASS,  label: "합격 예측" },
+  { words: ["다른 자격증", "같이 딸", "동시에"],           notice: NOTICE_MULTI, label: "여러 자격증" },
 ];
 
-const hasAny = (text, words) => words.some(w => text.includes(w));
+// 질문은 띄어쓰기를 지우고 견줍니다. 어르신마다 띄어 쓰시는 자리가 달라서입니다.
+// 그러니 찾는 낱말에서도 띄어쓰기를 지워야 합니다.
+//
+// 2026-08-21 고침. 전에는 낱말 쪽을 안 지웠습니다. 그래서 "같이 딸" 같은
+// 두 낱말짜리 규칙은 한 번도 맞은 적이 없었습니다.
+// ("지게차랑 굴착기 같이 딸 수 있나요?" → "지게차랑굴착기같이딸수있나요?" 에는
+//  "같이 딸" 이 없습니다. 띄어쓰기가 사이에 끼어 있어서입니다.)
+const hasAny = (text, words) =>
+  words.some(w => text.includes(String(w).replace(/\s/g, "")));
 
 // ---------- 저희가 다루지 않는 자격증 걸러내기 ----------
 // 2026-08-20 추가.
@@ -304,29 +361,58 @@ function searchBulk(question, aliases = {}) {
   return out.slice(0, TOP_K);
 }
 
+// 앞말에 받침이 있으면 "은", 없으면 "는" 을 붙입니다.
+//   "요양보호사 응시료" → "요양보호사 응시료는"
+//   "공인중개사 1차 면제 기간" → "공인중개사 1차 면제 기간은"
+// 조사를 "은(는)" 으로 적으면 소리 내어 읽으실 때 걸립니다.
+function withTopic(word, rest) {
+  const last = word.trim().slice(-1);
+  const code = last.charCodeAt(0);
+  const 한글 = code >= 0xAC00 && code <= 0xD7A3;
+  const 받침 = 한글 && (code - 0xAC00) % 28 !== 0;
+  return word + (받침 ? "은 " : "는 ") + rest;
+}
+
+// 돌려주는 값: { answer, source, level }
+// level 이 없으면 정해진 답이 아니라는 뜻입니다. 그때는 문서를 찾아봅니다.
 function fixedAnswer(question, docs) {
   const q = question.replace(/\s/g, "");
-  const unknown   = notice(docs, NOTICE_UNKNOWN,   DEFAULT_UNKNOWN);
-  const practical = notice(docs, NOTICE_PRACTICAL, DEFAULT_PRACTICAL);
 
-  if (hasAny(q, PRACTICAL_WORDS)) return [practical, "실기 질문"];
+  // --- 조건부 답변 가능 ---
+  // 실기는 안내하지 않지만 필기는 도와드립니다.
+  if (hasAny(q, PRACTICAL_WORDS))
+    return { answer: notice(docs, NOTICE_PRACTICAL), source: "실기 질문", level: LEVEL.PARTIAL };
 
-  // 저희가 다루지 않는 자격증이면 여기서 끊습니다.
+  // --- 답변 불가 ---
+  // 저희가 다루지 않는 자격증입니다. 대신 해 드릴 수 있는 일이 없습니다.
   // 안내 문구는 문서("저희가 다루는 자격증 여덟 가지")에서 읽어 직원이 고칠 수 있게 합니다.
   const other = outOfScopeCert(question);
   if (other) {
-    const list = notice(docs, "저희가 다루는 자격증 여덟 가지", "");
-    const head = `${other} 는 저희가 접수를 도와드리지 않습니다.`;
-    return [list ? `${head}\n${list}` : head, "다루지 않는 자격증: " + other];
+    const list = notice(docs, "저희가 다루는 자격증 여덟 가지");
+    const head = withTopic(other, "저희가 접수를 도와드리지 않습니다.");
+    return { answer: list ? `${head}\n${list}` : head,
+             source: "다루지 않는 자격증: " + other, level: LEVEL.NONE };
   }
 
+  // --- 조건부 답변 가능 ---
+  // 발주처가 확인하지 못한 항목입니다. 그것은 못 말씀드리지만 접수처와 일정은 압니다.
+  // 무엇을 확인 못 했는지 이름을 대 드립니다. "그건 모릅니다"보다 덜 막막합니다.
   for (const [subjects, topics, label] of UNKNOWN_RULES) {
-    if (hasAny(q, subjects) && hasAny(q, topics)) return [unknown, "확인 못 한 항목: " + label];
+    if (hasAny(q, subjects) && hasAny(q, topics))
+      return { answer: withTopic(label, "저희가 확인하지 못했습니다.") + "\n" +
+                       notice(docs, NOTICE_UNVERIFIED),
+               source: "확인 못 한 항목: " + label, level: LEVEL.PARTIAL };
   }
-  for (const group of CANNOT_ANSWER) {
-    if (hasAny(q, group)) return [unknown, "저희 소관이 아닌 질문"];
+
+  // --- 조건부 답변 가능 ---
+  // 저희가 판단해 드릴 수 없는 질문입니다. 대신 해 드릴 수 있는 일을 말씀드립니다.
+  for (const rule of PARTIAL_RULES) {
+    if (hasAny(q, rule.words))
+      return { answer: notice(docs, rule.notice),
+               source: "판단해 드릴 수 없는 질문: " + rule.label, level: LEVEL.PARTIAL };
   }
-  return [null, null];
+
+  return { answer: null, source: null, level: null };
 }
 
 // ---------- 문서 읽기 ----------
@@ -461,12 +547,13 @@ export default async function handler(req, res) {
   const docs = await loadDocs();
   const aliases = await loadAliases();   // 직원이 「말 바꾸기」 화면에서 넣은 것
 
-  // 1~3) 정해진 답 (거절 문구는 문서에서 읽습니다)
-  const [fixed, why] = fixedAnswer(question, docs);
-  if (fixed) return res.status(200).json({ answer: fixed, source: why });
+  // 1~3) 정해진 답 (안내 문구는 문서에서 읽습니다)
+  const fixed = fixedAnswer(question, docs);
+  if (fixed.answer) return res.status(200).json(fixed);
 
   if (!docs.length) {
-    return res.status(200).json({ answer: DEFAULT_UNKNOWN, source: "문서를 읽지 못했습니다" });
+    return res.status(200).json({ answer: DEFAULTS[NOTICE_UNKNOWN],
+                                  source: "문서를 읽지 못했습니다", level: LEVEL.NONE });
   }
 
   // 4~5) 검색 (안내문은 근거에서 제외)
@@ -506,11 +593,12 @@ export default async function handler(req, res) {
       : "근거: " + hits[0].doc.title;
 
     const made = await askGemini(question, context, aliases);
-    if (made && !isUnknown(made)) return { answer: forScreen(trim(made)), source: src };
+    if (made && !isUnknown(made))
+      return { answer: forScreen(trim(made)), source: src, level: LEVEL.FULL };
     // Gemini 를 못 쓰면 문서 내용을 그대로 보여 드립니다. 지어내지 않습니다.
     if (!made) {
       const plain = bulk ? hits[0].doc.a : hits[0].doc.content;
-      return { answer: forScreen(plain), source: src };
+      return { answer: forScreen(plain), source: src, level: LEVEL.FULL };
     }
     return null;   // 근거는 있었으나 답이 안 나온 경우
   }
@@ -522,7 +610,8 @@ export default async function handler(req, res) {
   if (second) return res.status(200).json(second);
 
   return res.status(200).json({
-    answer: notice(docs, NOTICE_UNKNOWN, DEFAULT_UNKNOWN),
+    answer: notice(docs, NOTICE_UNKNOWN),
     source: "문서에서 근거를 찾지 못함",
+    level:  LEVEL.NONE,
   });
 }

@@ -63,29 +63,83 @@ SUPABASE_ANON_KEY = ENV.get("SUPABASE_ANON_KEY", "")
 
 # "언제 거절할지"는 아래 규칙(코드)이 정합니다. 직원이 바꿀 수 없습니다.
 # "뭐라고 말할지"는 문서(faq_docs)에서 읽습니다. 직원이 바꿀 수 있습니다.
-#   900번 안내문 · 모를 때 / 910번 안내문 · 실기 질문
 # 문서를 못 읽으면 아래 기본 문구를 씁니다.
+#
+# 2026-08-21 — 답변 단계를 셋으로 나눔. api/chat.js 와 같은 규칙입니다.
+#
+# 그 전에는 두 갈래였습니다. 근거 있음 → 답변 / 근거 없음 → 거절.
+# 그래서 답할 수 있는 것까지 같이 끊겼습니다.
+#   "제가 합격할 수 있을까요?" → "모르겠습니다"
+# 합격 여부는 정말 알 수 없습니다. 하지만 시험 일정과 준비물은 저희가 압니다.
+#
+#   답변 가능       근거가 있다             → 근거대로 답한다
+#   조건부 답변 가능  그건 못 하지만 이건 된다  → 못 하는 것 + 되는 것을 같이 말한다
+#   답변 불가       저희 범위 밖이다         → 안 된다고만 말한다
+#
+# 지어내지 않는다는 원칙은 그대로입니다. 조건부도 새 사실을 만들지 않습니다.
 
-DEFAULT_PRACTICAL = "저희는 필기 접수만 도와드립니다. 실기는 저희가 안내하지 않습니다."
+LEVEL_FULL    = "답변 가능"
+LEVEL_PARTIAL = "조건부 답변 가능"
+LEVEL_NONE    = "답변 불가"
 
-DEFAULT_UNKNOWN = (
-    "모르겠습니다. 저희가 확인하지 못한 내용이라 알려드릴 수 없습니다.\n"
-    "짐작해서 말씀드리면 잘못 안내될 수 있어 답을 드리지 않습니다."
-)
+NOTICE_UNKNOWN    = "안내문 · 모를 때"
+NOTICE_PRACTICAL  = "안내문 · 실기 질문"
+NOTICE_UNVERIFIED = "안내문 · 확인 못 한 항목"
+NOTICE_PASS       = "안내문 · 합격 예측"
+NOTICE_VENUE      = "안내문 · 시험장 시설"
+NOTICE_MULTI      = "안내문 · 여러 자격증"
 
-NOTICE_UNKNOWN   = "안내문 · 모를 때"
-NOTICE_PRACTICAL = "안내문 · 실기 질문"
+DEFAULTS = {
+    NOTICE_UNKNOWN: (
+        "모르겠습니다. 저희가 확인하지 못한 내용이라 알려드릴 수 없습니다.\n"
+        "짐작해서 말씀드리면 잘못 안내될 수 있어 답을 드리지 않습니다."
+    ),
+    NOTICE_PRACTICAL: (
+        "실기는 저희가 안내해 드리지 않습니다.\n"
+        "필기 접수는 저희가 도와드립니다. 필기에 대해 물어봐 주십시오."
+    ),
+    # 무엇을 확인 못 했는지는 앞에 한 줄로 붙습니다. (fixed_answer 참고)
+    NOTICE_UNVERIFIED: (
+        "짐작해서 말씀드리면 잘못 안내될 수 있어 알려드리지 않습니다.\n"
+        "대신 어디서 접수하는지, 언제까지 접수하는지는 알려드릴 수 있습니다."
+    ),
+    NOTICE_PASS: (
+        "합격 여부를 미리 판단해 드릴 수는 없습니다.\n"
+        "대신 시험 일정이나 시험 당일 준비물은 알려드릴 수 있습니다."
+    ),
+    NOTICE_VENUE: (
+        "시험장 안의 시설은 저희가 확인하지 못했습니다.\n"
+        "시험장을 어디서 고르는지, 무엇을 가져가시는지는 알려드릴 수 있습니다."
+    ),
+    NOTICE_MULTI: (
+        "여러 자격증을 함께 준비하시는 것이 좋을지는 저희가 판단해 드릴 수 없습니다.\n"
+        "저희가 다루는 여덟 가지 가운데 궁금한 자격증의 접수 방법은 알려드릴 수 있습니다."
+    ),
+}
 
 
-def notice(docs, title, fallback):
+def notice(docs, title):
     for d in docs:
         if d["title"] == title and d["text"].strip():
             return d["text"].strip()
-    return fallback
+    return DEFAULTS.get(title, "")
 
 
 def is_notice(d):
-    return d["title"] in (NOTICE_UNKNOWN, NOTICE_PRACTICAL)
+    return d["title"] in DEFAULTS
+
+
+def with_topic(word, rest):
+    """앞말에 받침이 있으면 '은', 없으면 '는' 을 붙입니다.
+
+    "요양보호사 응시료" → "요양보호사 응시료는"
+    조사를 "은(는)" 으로 적으면 소리 내어 읽으실 때 걸립니다.
+    """
+    last = word.strip()[-1]
+    code = ord(last)
+    한글 = 0xAC00 <= code <= 0xD7A3
+    받침 = 한글 and (code - 0xAC00) % 28 != 0
+    return word + ("은 " if 받침 else "는 ") + rest
 
 # 02_안내규정.md 9절 — 발주처가 확인하지 못한 8가지.
 # 이 조합으로 물으시면 무조건 모른다고 답합니다.
@@ -102,10 +156,18 @@ UNKNOWN_RULES = [
 ]
 
 # 발주서 95-98줄 — 저희가 답할 수 없는 질문
-CANNOT_ANSWER = [
-    ["주차"],
-    ["붙", "합격", "될까", "가능"],   # "제가 붙을 수 있을까요"
-    ["다른 자격증", "같이 딸", "동시에"],
+#
+# 2026-08-21 — 전에는 셋 다 "모르겠습니다"로 똑같이 끊었습니다.
+# 이제는 못 하는 것마다 대신 해 드릴 수 있는 일을 함께 말합니다.
+# 무엇을 못 하는지는 그대로입니다. 판단해 드리지 않는다는 원칙은 지킵니다.
+#
+# 낱말도 좁혔습니다. 전에는 "합격" 과 "가능" 만 들어가도 끊었습니다.
+# 그래서 "필기 합격은 몇 년 유효한가요?" 처럼 문서에 답이 있는 질문까지
+# 거절했습니다. api/chat.js 와 같이 "합격할" "가능할까" 로 맞춥니다.
+PARTIAL_RULES = [
+    (["주차"],                            NOTICE_VENUE, "시험장 시설"),
+    (["붙", "합격할", "될까", "가능할까"],  NOTICE_PASS,  "합격 예측"),
+    (["다른 자격증", "같이 딸", "동시에"],  NOTICE_MULTI, "여러 자격증"),
 ]
 
 
@@ -146,37 +208,55 @@ def out_of_scope_cert(question):
 
 
 def has_any(text, words):
-    return any(w in text for w in words)
+    """질문은 띄어쓰기를 지우고 견줍니다. 어르신마다 띄어 쓰시는 자리가 달라서입니다.
+
+    그러니 찾는 낱말에서도 띄어쓰기를 지워야 합니다.
+    2026-08-21 고침. 전에는 낱말 쪽을 안 지웠습니다. 그래서 "같이 딸" 같은
+    두 낱말짜리 규칙은 한 번도 맞은 적이 없었습니다.
+    """
+    return any(w.replace(" ", "") in text for w in words)
 
 
 def fixed_answer(question, docs):
-    """검색하기 전에 정해진 답이 있는지 봅니다. 문구는 문서에서 읽습니다."""
+    """검색하기 전에 정해진 답이 있는지 봅니다. 문구는 문서에서 읽습니다.
+
+    돌려주는 값: (answer, source, level)
+    answer 가 None 이면 정해진 답이 아니라는 뜻입니다. 그때는 문서를 찾아봅니다.
+    """
     q = question.replace(" ", "")
-    unknown   = notice(docs, NOTICE_UNKNOWN, DEFAULT_UNKNOWN)
-    practical = notice(docs, NOTICE_PRACTICAL, DEFAULT_PRACTICAL)
 
-    # 1) 실기
+    # --- 조건부 답변 가능 ---
+    # 실기는 안내하지 않지만 필기는 도와드립니다.
     if has_any(q, PRACTICAL_WORDS):
-        return practical, "실기 질문"
+        return notice(docs, NOTICE_PRACTICAL), "실기 질문", LEVEL_PARTIAL
 
-    # 1-2) 저희가 다루지 않는 자격증
+    # --- 답변 불가 ---
+    # 저희가 다루지 않는 자격증입니다. 대신 해 드릴 수 있는 일이 없습니다.
     other = out_of_scope_cert(question)
     if other:
-        listing = notice(docs, "저희가 다루는 자격증 여덟 가지", "")
-        head = f"{other} 는 저희가 접수를 도와드리지 않습니다."
-        return (f"{head}\n{listing}" if listing else head), "다루지 않는 자격증: " + other
+        listing = notice(docs, "저희가 다루는 자격증 여덟 가지")
+        head = with_topic(other, "저희가 접수를 도와드리지 않습니다.")
+        return ((f"{head}\n{listing}" if listing else head),
+                "다루지 않는 자격증: " + other, LEVEL_NONE)
 
-    # 2) 확인 못 한 8가지
+    # --- 조건부 답변 가능 ---
+    # 발주처가 확인하지 못한 8가지입니다.
+    # 그것은 못 말씀드리지만 접수처와 일정은 압니다.
+    # 무엇을 확인 못 했는지 이름을 대 드립니다. "그건 모릅니다"보다 덜 막막합니다.
     for subjects, topics, label in UNKNOWN_RULES:
         if has_any(q, subjects) and has_any(q, topics):
-            return unknown, "확인 못 한 항목: " + label
+            head = with_topic(label, "저희가 확인하지 못했습니다.")
+            return (f"{head}\n{notice(docs, NOTICE_UNVERIFIED)}",
+                    "확인 못 한 항목: " + label, LEVEL_PARTIAL)
 
-    # 3) 답할 수 없는 질문
-    for group in CANNOT_ANSWER:
-        if has_any(q, group):
-            return unknown, "저희 소관이 아닌 질문"
+    # --- 조건부 답변 가능 ---
+    # 저희가 판단해 드릴 수 없는 질문입니다. 대신 해 드릴 수 있는 일을 말씀드립니다.
+    for words, notice_title, label in PARTIAL_RULES:
+        if has_any(q, words):
+            return (notice(docs, notice_title),
+                    "판단해 드릴 수 없는 질문: " + label, LEVEL_PARTIAL)
 
-    return None, None
+    return None, None, None
 
 
 # =============================================================
@@ -419,21 +499,22 @@ def trim(text, limit=160):
 
 
 def answer(question):
+    """돌려주는 값: (답, 까닭, 단계)"""
     question = (question or "").strip()
     if question == "":
-        return "궁금하신 것을 적어 주십시오.", ""
+        return "궁금하신 것을 적어 주십시오.", "", ""
 
     docs = load_docs()
 
-    # 1~3) 정해진 답 (거절 문구는 문서에서 읽습니다)
-    fixed, why = fixed_answer(question, docs)
+    # 1~3) 정해진 답 (안내 문구는 문서에서 읽습니다)
+    fixed, why, level = fixed_answer(question, docs)
     if fixed:
-        return fixed, why
+        return fixed, why, level
 
     # 4~5) 검색
     found = search(question)
     if not found:
-        return notice(docs, NOTICE_UNKNOWN, DEFAULT_UNKNOWN), "문서에서 근거를 찾지 못함"
+        return notice(docs, NOTICE_UNKNOWN), "문서에서 근거를 찾지 못함", LEVEL_NONE
 
     context = "\n\n".join(f"- {f['title']}\n{f['text']}" for _, f in found)
     source = " / ".join(f["title"] for _, f in found)
@@ -441,10 +522,10 @@ def answer(question):
     # 6) 문장 다듬기
     made = ask_gemini(question, context, load_aliases())
     if made:
-        return trim(made), "근거: " + source
+        return trim(made), "근거: " + source, LEVEL_FULL
 
     # Gemini 를 못 쓰면 문서 내용을 그대로 보여 드립니다. 지어내지 않습니다.
-    return found[0][1]["text"], "근거: " + source
+    return found[0][1]["text"], "근거: " + source, LEVEL_FULL
 
 
 # =============================================================
@@ -475,7 +556,7 @@ def run_test():
     print("=" * 66)
     passed = 0
     for i, t in enumerate(TESTS, 1):
-        got, why = answer(t["q"])
+        got, why, _ = answer(t["q"])
         ok = all(m in got for m in t["must"])
         passed += ok
         print(f"\n[{i}] {t['why']}")
@@ -512,7 +593,7 @@ def for_screen(text):
 
 
 def chat(message, history):
-    got, why = answer(message)
+    got, why, _ = answer(message)
     got = for_screen(got)
     if why and why.startswith("근거: "):
         why = "근거: " + why[4:].split(" / ")[0]   # 가장 잘 맞는 문서 하나만
